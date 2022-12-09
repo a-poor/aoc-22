@@ -50,9 +50,39 @@ fn read_input_from_file(path: &str) -> Result<Vec<Option<i32>>, String> {
 }
 
 
+struct MaxList {
+    len: usize,
+    data: Vec<i32>,
+}
+
+impl MaxList {
+    fn new(size: usize) -> MaxList {
+        MaxList{
+            len: size,
+            data: vec![],
+        }
+    }
+
+    fn insert(&mut self, val: i32) {
+        self.data.reverse();
+
+        // Add the value...
+        match self.data.binary_search(&val) {
+            Ok(pos) => self.data.insert(pos, val),
+            Err(pos) => self.data.insert(pos, val),
+        }
+
+        self.data.reverse();
+
+        // Make sure the vec isn't too long...
+        self.data.truncate(self.len);
+    }
+}
+
+
 fn do_work(data: Vec<Option<i32>>) -> Option<i32> {
     // Create a variable to store the result...
-    let mut max = None;
+    let mut max = MaxList::new(3);
     let mut cur = 0;
 
     // Iterate through the data...
@@ -61,18 +91,8 @@ fn do_work(data: Vec<Option<i32>>) -> Option<i32> {
             // If n is none (aka line is empty) running tally is complete.
             // Check against the max.
             None => {
-                // Is the running amount bigger that the previous max?
-                // Or is the previous max none?
-                match max {
-                    Some(maxn) => { // There is a previous max...
-                        if cur > maxn { // ...and current is larger
-                            max = Some(cur);
-                        }
-                    },
-                    None => {
-                        max = Some(cur);
-                    },
-                }
+                // Add it to the list...
+                max.insert(cur);
                 
                 // Reset the running tally
                 cur = 0;
@@ -85,14 +105,18 @@ fn do_work(data: Vec<Option<i32>>) -> Option<i32> {
         }
     }
     
-    // Return the result...
-    max
+    // Return the sum of the top 3...
+    max.data
+        .into_iter()
+        .reduce(|a, b| a + b)
 }
 
 fn main() {
     let input_data = read_input_from_file(INPUT_FILE);
+
     let input_data = input_data.expect("Failed to read input data file");
 
     let res = do_work(input_data);
+
     println!("Result: {:?}", res);
 }

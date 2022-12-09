@@ -1,10 +1,7 @@
+use std::fs;
 use std::collections::HashSet;
 
-// struct Rucksack {
-//     left: String,
-//     right: String,
-// }
-// impl Rucksack {}
+const INPUT_PATH: &str = "inputs/day-03.txt";
 
 
 fn find_repeat(line: &str) -> Result<char, String> {
@@ -55,12 +52,10 @@ fn priority(c: char) -> i32 {
 
 
 fn main() {
-    let raw = "vJrwpWtwJgWrhcsFMMfFFhFp
-jqHRNqRjqzjGDLGLrsFMfFZSrLrFZsSL
-PmmdzqPrVvPwwTWBwg
-wMqvLMZHhHMvwLHjbvcjnnSBnvTQFn
-ttgJtRGJQctTZtZT
-CrZsJsPPZsGzwwsLwLmpwMDw";
+    let raw = fs::read_to_string(INPUT_PATH)
+        .expect("failed to read in file");
+
+    let raw = raw.trim();
 
     let total = raw
         .split("\n") // Split into lines...
@@ -70,8 +65,8 @@ CrZsJsPPZsGzwwsLwLmpwMDw";
         }) // Find the duplicate characters...
         .map(|c| priority(c))
         .reduce(|a, b| a + b)
-        .expect("no lines")
-        ;
+        .expect("no lines");
+
     println!("Result = {}", total);
 }
 

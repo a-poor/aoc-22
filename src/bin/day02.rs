@@ -2,7 +2,7 @@ use std::{cmp::Ordering, fs};
 
 const INPUT_FILE: &str = "inputs/day-02.txt";
 
-#[derive(Debug, PartialEq, Eq, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, Ord)]
 enum Move {
     Rock,
     Paper,
@@ -37,6 +37,7 @@ impl PartialOrd for Move {
     }
 }
 
+#[derive(Clone)]
 enum Outcome {
     Win,
     Loss,
@@ -54,30 +55,36 @@ impl Outcome {
 }
 
 struct Round {
-    my_move: Move,
     their_move: Move,
+    goal: Outcome,
 }
 
 impl Round {
-    fn new(them: &str, me: &str) -> Self {
+    fn new(them: &str, goal: &str) -> Self {
         Round {
-            my_move: parse_my_move(me),
             their_move: parse_their_move(them),
+            goal: parse_goal(goal),
         }
     }
 
-    fn outcome(&self) -> Outcome {
-        if self.my_move == self.their_move {
-            Outcome::Tie
-        } else if self.my_move > self.their_move {
-            Outcome::Win
-        }  else {
-            Outcome::Loss
+    fn my_move(&self) -> Move {
+        match (self.their_move.clone(), self.goal.clone()) {
+            (Move::Rock, Outcome::Win) => Move::Paper,
+            (Move::Rock, Outcome::Tie) => Move::Rock,
+            (Move::Rock, Outcome::Loss) => Move::Scissors,
+            
+            (Move::Paper, Outcome::Win) => Move::Scissors,
+            (Move::Paper, Outcome::Tie) => Move::Paper,
+            (Move::Paper, Outcome::Loss) => Move::Rock,
+    
+            (Move::Scissors, Outcome::Win) => Move::Rock,
+            (Move::Scissors, Outcome::Tie) => Move::Scissors,
+            (Move::Scissors, Outcome::Loss) => Move::Paper,
         }
     }
 
     fn score(&self) -> i32 {
-        self.outcome().score() + self.my_move.score()
+        self.goal.score() + self.my_move().score()
     }
 }
 
@@ -90,11 +97,11 @@ fn parse_their_move(c: &str) -> Move {
     }
 }
 
-fn parse_my_move(c: &str) -> Move {
+fn parse_goal(c: &str) -> Outcome {
     match c {
-        "X" => Move::Rock,
-        "Y" => Move::Paper,
-        "Z" => Move::Scissors,
+        "X" => Outcome::Loss,
+        "Y" => Outcome::Tie,
+        "Z" => Outcome::Win,
         _ => panic!("unknown my move code \"{}\"", c),
     }
 }

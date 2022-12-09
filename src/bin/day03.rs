@@ -4,42 +4,6 @@ use std::collections::HashSet;
 const INPUT_PATH: &str = "inputs/day-03.txt";
 
 
-fn find_repeat(line: &str) -> Result<char, String> {
-    // Validate the line length...
-    let line_len = line.len();
-    if line_len == 0 {
-        return Err("can't split zero-length line".into());
-    }
-    if line_len % 2 == 1 {
-        return Err(format!("invalid line length. line length is odd ({})", line_len));
-    }
-
-    // Split into left and right...
-    let mid = line_len / 2;
-    let left = &line[..mid];
-    let right = &line[mid..];
-
-    // Convert them into sets...
-    let left_set: HashSet<char> = left.chars().collect();
-    let right_set: HashSet<char> = right.chars().collect();
-
-    // Check the intersection...
-    let intersect: Vec<&char> = left_set.intersection(&right_set).collect();
-
-    // Validate the intersection...
-    let intersect_len = intersect.len();
-    if intersect_len == 0 {
-        return Err("\"left ∩ right\" is empty".into());
-    }
-    if intersect_len > 1 {
-        return Err(format!("\"left ∩ right\" is greater than 1 ({})", intersect_len));
-    }
-
-    let dupe = intersect[0];
-    Ok(*dupe)
-}
-
-
 fn priority(c: char) -> i32 {
     if c >= 'a' && c <= 'z' {
         c as i32 - 'a' as i32 + 1
@@ -51,45 +15,76 @@ fn priority(c: char) -> i32 {
 }
 
 
+fn into_threes(lines: Vec<&str>) -> Vec<Vec<&str>> {
+    // Initialize a place to store the data...
+    let mut res: Vec<Vec<&str>> = Vec::new();
+    let mut group: Vec<&str> = Vec::new();
+    
+    // Iterate through the lines...
+    for line in lines {
+        // Add the line to the current group
+        group.push(line);
+
+        // If it reached the right length, add it and reset the group
+        if group.len() == 3 {
+            res.push(group);
+            group = Vec::new();
+        }
+    }
+
+    // Return results!
+    res
+}
+
+fn group_intersect(groups: Vec<Vec<&str>>) -> Vec<char> {
+    groups
+        .into_iter()
+        .enumerate()
+        .map(|(i, group)| {
+            let intersect: Vec<char> = group
+                .into_iter()
+                .map(|line| line.chars().collect::<HashSet<char>>())
+                .reduce(|a, b| {
+                    let int = a.intersection(&b);
+                    int
+                        .collect::<Vec<_>>()
+                        .into_iter()
+                        .map(|c| *c)
+                        .collect::<HashSet<_>>()
+                })
+                .expect("group intersection is empty")
+                .into_iter()
+                .collect()
+                ;
+            
+            if intersect.len() == 0 {
+                panic!("zero length intersection for group {}", i);
+            }
+            if intersect.len() > 1 {
+                panic!("intersection greater than 1 for group: {}", i);
+            }
+
+            let ci = intersect[0];
+            ci
+        })
+        .collect()
+}
+
+
 fn main() {
     let raw = fs::read_to_string(INPUT_PATH)
         .expect("failed to read in file");
 
     let raw = raw.trim();
+    let lines: Vec<&str> = raw.split("\n").collect();
 
-    let total = raw
-        .split("\n") // Split into lines...
-        .map(|line| {
-            find_repeat(line)
-                .expect("line repeat find failed")
-        }) // Find the duplicate characters...
+    let groups = into_threes(lines);
+    let total = group_intersect(groups)
+        .into_iter()
         .map(|c| priority(c))
         .reduce(|a, b| a + b)
-        .expect("no lines");
+        .expect("no lines!");
 
     println!("Result = {}", total);
 }
 
-
-
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn priority_test() {
-        assert_eq!(priority('a'), 1);
-        assert_eq!(priority('b'), 2);
-        assert_eq!(priority('z'), 26);
-        assert_eq!(priority('A'), 27);
-        assert_eq!(priority('M'), 39);
-        assert_eq!(priority('Z'), 52);
-    }
-
-    #[test]
-    #[should_panic(expected = "can't prioritize unknown character '1'")]
-    fn priority_test_panic() {
-        priority('1');
-    }
-}

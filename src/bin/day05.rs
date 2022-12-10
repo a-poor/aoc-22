@@ -107,11 +107,32 @@ fn main() {
             .expect(format!("failed to get 'to' stack number {}", m.to).as_str())
             .clone();
 
+        // Use a buffer, in case the boxes need to be moved in place...
+        let mut buf = Vec::new();
         for i in 0..m.count {
-            let c = from_stack.pop_front().expect(format!("failed to get {}th value in from-stack {}", i, m.from).as_str());
+            let c = from_stack
+                .pop_front()
+                .expect(
+                    format!(
+                        "failed to get {}th value in from-stack {}", 
+                        i, m.from
+                    )
+                    .as_str()
+                );
+            buf.push(c);
+        }
+        
+        // // Part 1: Use the following (move boxes one at a time)...
+        // for c in buf {
+        //     to_stack.push_front(c);
+        // }
+
+        // Part 2: Use the following (move boxes "all at once")...
+        for c in buf.into_iter().rev() {
             to_stack.push_front(c);
         }
 
+        // Re-store the stacks...
         boxes[m.from] = from_stack;
         boxes[m.to] = to_stack;
     }

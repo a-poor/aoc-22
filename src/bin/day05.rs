@@ -53,7 +53,7 @@ fn pivot_boxes(boxes: Vec<Vec<Option<char>>>) -> Stacks {
         .map(|_| VecDeque::new())
         .collect();
 
-    for (i, r) in boxes.into_iter().enumerate() {
+    for r in boxes {
         for (j, c) in r.into_iter().enumerate() {
             if let Some(c) = c {
                 res[j].push_back(c);
@@ -79,16 +79,8 @@ fn parse_move(line: &str) -> Move {
 }
 
 fn main() {
-    let raw = 
-"    [D]    
-[N] [C]    
-[Z] [M] [P]
- 1   2   3 
-
-move 1 from 2 to 1
-move 3 from 1 to 3
-move 2 from 2 to 1
-move 1 from 1 to 2";
+    let raw = fs::read_to_string(INPUT_FILE)
+        .expect("failed to read input file");
 
     let split: Vec<&str> = raw.split("\n\n").collect();
     let raw_boxes = split[0];

@@ -12,7 +12,7 @@ struct Range {
 struct Pair(Range, Range);
 
 fn a_in_b(r1: Range, r2: Range) -> bool {
-    r1.start < r2.start && r1.end < r2.end
+    r1.start >= r2.start && r1.end <= r2.end
 }
 
 fn subsumes(p: Pair) -> bool {
@@ -51,12 +51,8 @@ fn split_line(line: &str) -> Pair {
 }
 
 fn main() {
-    let raw = "2-4,6-8
-2-3,4-5
-5-7,7-9
-2-8,3-7
-6-6,4-6
-2-6,4-8";
+    let raw = fs::read_to_string(INPUT_FILE)
+        .expect("failed to read input file");
 
     let lines = raw
         .trim()
@@ -74,5 +70,30 @@ fn main() {
         ;
 
     println!("# of subsuming pairs: {}", lines);
+
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_a_in_b() {
+        assert!(!a_in_b(
+            Range{start: 2, end: 8}, 
+            Range{start: 3, end: 5},
+        ));
+        assert!(!a_in_b(
+            Range{start: 1, end: 3}, 
+            Range{start: 2, end: 4},
+        ));
+        assert!(a_in_b(
+            Range{start: 3, end: 5}, 
+            Range{start: 1, end: 10},
+        ));
+    }
     
+    #[test]
+    fn test_subsumes() {}
+
 }

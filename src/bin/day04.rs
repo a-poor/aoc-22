@@ -9,7 +9,22 @@ struct Range {
     end: i32,
 }
 
+impl Range {
+    fn new(start: i32, end: i32) -> Self {
+        Self {start, end}
+    }
+}
+
 struct Pair(Range, Range);
+
+impl Pair {
+    fn new(a_start: i32, a_end: i32, b_start: i32, b_end: i32) -> Self {
+        Pair(
+            Range::new(a_start, a_end),
+            Range::new(b_start, b_end),
+        )
+    }
+}
 
 fn a_in_b(r1: Range, r2: Range) -> bool {
     r1.start >= r2.start && r1.end <= r2.end
@@ -18,6 +33,18 @@ fn a_in_b(r1: Range, r2: Range) -> bool {
 fn subsumes(p: Pair) -> bool {
     let Pair(a, b) = p;
     a_in_b(a, b) || a_in_b(b, a)
+}
+
+fn overlaps(p: Pair) -> bool {
+    let Pair(a, b) = p;
+    
+    if a.start <= b.start && a.end >= b.start {
+        true
+    } else if b.start <= a.start && b.end >= a.start {
+        true
+    } else {
+        false
+    }
 }
 
 fn split_range(range: &str) -> Range {
@@ -32,7 +59,7 @@ fn split_range(range: &str) -> Range {
     let a = a.to_string().parse().expect("couldn't parse range number as int");
     let b = b.to_string().parse().expect("couldn't parse range number as int");
 
-    Range { start: a, end: b }
+    Range::new(a, b)
 }
 
 fn split_line(line: &str) -> Pair {
@@ -59,7 +86,7 @@ fn main() {
         .split("\n")
         .map(split_line)
         .map(|p| {
-            if subsumes(p) {
+            if overlaps(p) {
                 1
             } else {
                 0
@@ -94,6 +121,33 @@ mod tests {
     }
     
     #[test]
-    fn test_subsumes() {}
+    fn test_overlaps() {
+        assert!(overlaps(Pair::new(
+            1, 5,
+            2, 6,
+        )));
+        assert!(overlaps(Pair::new(
+            1, 10,
+            3, 6,
+        )));
+        assert!(overlaps(Pair::new(
+            3, 5,
+            1, 10,
+        )));
+        assert!(overlaps(Pair::new(
+            3, 9,
+            2, 6,
+        )));
+        
+
+        assert!(!overlaps(Pair::new(
+            1, 4,
+            6, 8,
+        )));
+        assert!(!overlaps(Pair::new(
+            6, 8,
+            1, 4,
+        )));
+    }
 
 }

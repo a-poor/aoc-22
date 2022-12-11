@@ -122,23 +122,25 @@ $ ls
     
     let max_size: usize = 100_000;
 
-    // Iterate through the directories (aka file path prefixes)...
-    for dir in dirs {
-        // Get all files with that as a prefix...
-        // - Limit to files with a prefix matching `dir`
-        // - Get the sum of all the sizes
-        // - If after the filter, the iterator is empty, size is `0`
-        let size = files
-            .clone()
-            .into_iter()
-            .filter(|(path, _)| path.starts_with(&dir))
-            .map(|(_, size)| size)
-            .reduce(|a, b| a + b)
-            .unwrap_or(0)
-            ;
-
-        println!("dir = \"{}\" | size = {} | good? {}", dir, size, size <= max_size);
-    }
+    let total = dirs
+        .into_iter()
+        .map(|dir| {
+            // Get all files with that as a prefix...
+            // - Limit to files with a prefix matching `dir`
+            // - Get the sum of all the sizes
+            // - If after the filter, the iterator is empty, size is `0`
+            files
+                .clone()
+                .into_iter()
+                .filter(|(path, _)| path.starts_with(&dir))
+                .map(|(_, size)| size)
+                .reduce(|a, b| a + b)
+                .unwrap_or(0)
+        })
+        .filter(|size| *size <= max_size)
+        .reduce(|a, b| a + b);
+    
+        println!("total = {:?}", total);
     
 
 }

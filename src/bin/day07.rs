@@ -2,6 +2,9 @@ use regex::Regex;
 use std::collections::{HashMap, HashSet};
 
 
+const INPUT_PATH: &str = "inputs/day-07.txt";
+
+
 #[derive(Debug, PartialEq, Eq)]
 enum Line {
     ListDir,
@@ -55,29 +58,7 @@ fn strip_last_path(p: &str) -> String {
 }
 
 fn main() {
-    let raw = "$ cd /
-$ ls
-dir a
-14848514 b.txt
-8504156 c.dat
-dir d
-$ cd a
-$ ls
-dir e
-29116 f
-2557 g
-62596 h.lst
-$ cd e
-$ ls
-584 i
-$ cd ..
-$ cd ..
-$ cd d
-$ ls
-4060174 j
-8033020 d.log
-5626152 d.ext
-7214296 k";
+    let raw = std::fs::read_to_string(INPUT_PATH).expect("failed to read input file");
 
     let lines: Vec<_> = raw
         .split("\n")

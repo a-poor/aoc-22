@@ -1,37 +1,6 @@
 use regex::Regex;
+use std::collections::{HashMap, HashSet};
 
-// struct File {
-//     parent: String,
-//     name: String,
-//     size: i32,
-// }
-
-// struct Directory {
-//     parent: Option<String>,
-//     name: String,
-// }
-
-// struct FileSystem {
-//     dirs: Vec<Directory>,
-//     files: Vec<File>,
-// }
-
-// impl FileSystem {
-//     fn new() -> Self {
-//         FileSystem { 
-//             dirs: Vec::new(), 
-//             files: Vec::new(), 
-//         }
-//     }
-// }
-
-// use std::collections::HashMap;
-
-// struct File {
-//     dir: String,
-//     name: String,
-//     size: i32,
-// }
 
 #[derive(Debug, PartialEq, Eq)]
 enum Line {
@@ -76,6 +45,15 @@ fn parse_line(line: &str) -> Line {
     panic!("Oh no! How did I get here? Line: \"{}\"", line);
 }
 
+fn strip_last_path(p: &str) -> String {
+    if !p.contains("/") {
+        "".into()
+    } else {
+        let re = Regex::new(r"/[^/]+$").unwrap();
+        re.replace(p, "").into()
+    }
+}
+
 fn main() {
     let raw = "$ cd /
 $ ls
@@ -101,30 +79,66 @@ $ ls
 5626152 d.ext
 7214296 k";
 
-    let _lines: Vec<_> = raw
+    let lines: Vec<_> = raw
         .split("\n")
         .map(|line| parse_line(line))
         .collect()
         ;
 
-    // for line in lines {
-    //     match line {
-    //         Line::ListDir => println!("> Listing directories"),
-    //         Line::ChDir(path) => println!("> Changing directories to: {}", path),
-    //         Line::DirInDir(dir) => println!("? Found a dir: {}", dir),
-    //         Line::FileInDir(size, name) => println!("> Found a file: {} ({} bytes)", name, size),
-    //     }
-    // }
+    let mut files: HashMap<String, usize> = HashMap::new();
+    let mut dirs: HashSet<String> = HashSet::new();
+    let mut cdir: String = "".into();
 
-    // let mut files: HashMap<String, File> = HashMap::new();
-    // let mut cdir: Vec<&str> = Vec::new();
+    for line in lines {
+        match line {
+            Line::ListDir => { /* noop */ },
+            Line::ChDir(dir) => {
+                if dir == "/" { // Move to root?
+                    cdir = "".into();
+                
+                } else if dir == ".." { // Move up one?
+                    cdir = strip_last_path(cdir.as_str());
 
-    assert_eq!(Line::ChDir("/".into()), parse_line(r"$ cd /"));
-    assert_eq!(Line::ChDir("my_stuff".into()), parse_line("$ cd my_stuff"));
-    assert_eq!(Line::ChDir("..".into()), parse_line("$ cd .."));
-    assert_eq!(Line::ListDir, parse_line("$ ls"));
-    assert_eq!(Line::DirInDir("my_stuff".into()), parse_line("dir my_stuff"));
-    assert_eq!(Line::FileInDir(12345, "demo.txt".into()), parse_line("12345 demo.txt"));
+                } else { // Move down into dir?
+                    cdir = format!("{}/{}", cdir, dir);
+                
+                }
+            },
+            Line::DirInDir(_dir) => { /* noop for now */ },
+            Line::FileInDir(size, name) => {
+                let path = format!("{}/{}", cdir, name);
+                files.insert(path, size);
+            },
+        }
+        if cdir.starts_with("/") {
+            dirs.insert(format!("{}", cdir));
+        } else {
+            dirs.insert(format!("/{}", cdir));
+        }
+    }
 
+    // println!("files = {:?}", files);
+    // println!("dirs = {:?}", dirs);
+    
+    let max_size: usize = 100_000;
+
+    // Iterate through the directories (aka file path prefixes)...
+    for dir in dirs {
+        // Get all files with that as a prefix...
+        // - Limit to files with a prefix matching `dir`
+        // - Get the sum of all the sizes
+        // - If after the filter, the iterator is empty, size is `0`
+        let size = files
+            .clone()
+            .into_iter()
+            .filter(|(path, _)| path.starts_with(&dir))
+            .map(|(_, size)| size)
+            .reduce(|a, b| a + b)
+            .unwrap_or(0)
+            ;
+
+        println!("dir = \"{}\" | size = {} | good? {}", dir, size, size <= max_size);
+    }
+    
 
 }

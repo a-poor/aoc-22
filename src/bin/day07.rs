@@ -4,6 +4,9 @@ use std::collections::{HashMap, HashSet};
 
 const INPUT_PATH: &str = "inputs/day-07.txt";
 
+const TOTAL_DISK_SPACE: usize = 70_000_000;
+const DISK_SPACE_NEEDED: usize = 30_000_000;
+
 
 #[derive(Debug, PartialEq, Eq)]
 enum Line {
@@ -57,6 +60,19 @@ fn strip_last_path(p: &str) -> String {
     }
 }
 
+fn get_dir_size(files: &HashMap<String, usize>, prefix: &str) -> usize {
+    // Get all files with that as a prefix...
+    // - Limit to files with a prefix matching `dir`
+    // - Get the sum of all the sizes
+    // - If after the filter, the iterator is empty, size is `0`
+    files
+        .into_iter()
+        .filter(|(path, _)| path.starts_with(prefix))
+        .map(|(_, size)| *size)
+        .reduce(|a, b| a + b)
+        .unwrap_or(0)
+}
+
 fn main() {
     let raw = std::fs::read_to_string(INPUT_PATH).expect("failed to read input file");
 
@@ -98,30 +114,26 @@ fn main() {
         }
     }
 
-    // println!("files = {:?}", files);
-    // println!("dirs = {:?}", dirs);
-    
-    let max_size: usize = 100_000;
+    // Find out how much disk space needs to be freed up...
+    let space_used = get_dir_size(&files, "/");
+    let space_remaining = TOTAL_DISK_SPACE - space_used;
+    let space_needed = DISK_SPACE_NEEDED - space_remaining;
 
-    let total = dirs
+
+    println!("     space_used = {}", space_used);    
+    println!("space_remaining = {}", space_remaining);
+    println!("   space_needed = {}", space_needed);
+    
+    let mut dir_sizes: Vec<_> = dirs
         .into_iter()
-        .map(|dir| {
-            // Get all files with that as a prefix...
-            // - Limit to files with a prefix matching `dir`
-            // - Get the sum of all the sizes
-            // - If after the filter, the iterator is empty, size is `0`
-            files
-                .clone()
-                .into_iter()
-                .filter(|(path, _)| path.starts_with(&dir))
-                .map(|(_, size)| size)
-                .reduce(|a, b| a + b)
-                .unwrap_or(0)
-        })
-        .filter(|size| *size <= max_size)
-        .reduce(|a, b| a + b);
+        .map(|dir| get_dir_size(&files, dir.as_str()))
+        .filter(|size| *size > space_needed)
+        .collect();
+    dir_sizes.sort();
+    let smallest = dir_sizes.get(0);
+    let largest = dir_sizes.get(dir_sizes.len() - 1);
     
-        println!("total = {:?}", total);
-    
+    println!("smallest = {:?}", smallest);
+    println!("largest  = {:?}", largest);
 
 }

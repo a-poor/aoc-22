@@ -1,10 +1,3 @@
-/// --- Part 1 Notes ---
-/// - There is a grid of trees
-/// - There is one tree per character in the grid. 
-/// - Each character (digit) represents the height of the tree in that space.
-/// - Only trees that can't be seen from outside the grid (top, bottom, left, or right) are marked as good
-/// - A tree is considered visible from a side if the trees between it and the outside are shorter than it
-/// - Q: Count the number of trees not visible from the outside!
 
 const INPUT_FILE: &str = "inputs/day-08.txt";
 
@@ -33,128 +26,78 @@ fn main() {
     let grid_height = grid.len();
     let grid_width = grid.get(0).expect("grid has 0 rows!").len();
 
-    // Create a result grid. All trees default to `visible=false`
-    let mut res: Vec<Vec<bool>> = (0..grid_height)
-        .map(|_| (0..grid_width)
-            .map(|_| false)
-            .collect()
-        )
-        .collect()
-        ;
+    // Keep track of the best score...
+    let mut best_score = 0;
 
-    // Run through in each direction (l->r, r->l, t->b, b->t), "crossing out" trees that are visible...
-
-    // Left-to-right...
+    // Iterate through the grid of trees...
     for i in 0..grid_height {
-        let mut running_height: Option<u8> = None;
-        
         for j in 0..grid_width {
-            // Get the tree height at that index level...
-            let tree_height = grid[i][j];
+            // Get this tree's (tree a) height...
+            let ha = grid[i][j];
 
-            // Was there a previously taller tree (or was that the first tree)?
-            if let Some(rh) = running_height {
-                // Is that tree taller than the previously tallest tree?
-                if tree_height > rh {
-                    running_height = Some(tree_height);
-                    res[i][j] = true;
+            // Look left...
+            let mut left_dist = 0;
+            for k in (0..j).rev() {
+                // Get the height of tree b...
+                let hb = grid[i][k];
+                
+                // Is tree b shorter than tree a?
+                left_dist += 1;
+                if hb >= ha {
+                    break;
                 }
-            } else {
-                // This was the first tree, automatically visible and the new tallest...
-                running_height = Some(tree_height);
-                res[i][j] = true;
+            }
+
+            // Look right...
+            let mut right_dist = 0;
+            for k in j+1..grid_width {
+                // Get the height of tree b...
+                let hb = grid[i][k];
+                
+                // Is tree b shorter than tree a?
+                right_dist += 1;
+                if hb >= ha {
+                    break;
+                }
+            }
+
+            // Look up...
+            let mut up_dist = 0;
+            for k in (0..i).rev() {
+                // Get the height of tree b...
+                let hb = grid[k][j];
+                
+                // Is tree b shorter than tree a?
+                up_dist += 1;
+                if hb >= ha {
+                    break;
+                }
+            }
+
+            // Look down...
+            let mut down_dist = 0;
+            for k in i+1..grid_height {
+                // Get the height of tree b...
+                let hb = grid[k][j];
+                
+                // Is tree b shorter than tree a?
+                down_dist += 1;
+                if hb >= ha {
+                    break;
+                }
+            }
+
+            // Calculate the total score...
+            let score = left_dist * right_dist * up_dist * down_dist;
+
+            // Is that better?
+            if score > best_score {
+                best_score = score;
             }
         }
     }
 
-    // Right-to-left...
-    for i in 0..grid_height {
-        // Reset the running tallest tree...
-        let mut running_height: Option<u8> = None;
-
-        for j in (0..grid_width).rev() {
-            // Get the tree height at that index level...
-            let tree_height = grid[i][j];
-            
-            // Was there a previously taller tree (or was that the first tree)?
-            if let Some(rh) = running_height {
-                // Is that tree taller than the previously tallest tree?
-                if tree_height > rh {
-                    running_height = Some(tree_height);
-                    res[i][j] = true;
-
-                }
-
-            } else {
-                // This was the first tree, automatically visible and the new tallest...
-                running_height = Some(tree_height);
-                res[i][j] = true;
-
-            }
-        }
-    }
-
-    // Top-to-bottom...
-    for j in 0..grid_width {
-        let mut running_height: Option<u8> = None;
-
-        for i in 0..grid_height {
-            // Get the tree height at that index level...
-            let tree_height = grid[i][j];
-
-            // Was there a previously taller tree (or was that the first tree)?
-            if let Some(rh) = running_height {
-                // Is that tree taller than the previously tallest tree?
-                if tree_height > rh {
-                    running_height = Some(tree_height);
-                    res[i][j] = true;
-                }
-
-            } else {
-                // This was the first tree, automatically visible and the new tallest...
-                running_height = Some(tree_height);
-                res[i][j] = true;
-
-            }
-        }
-    }
-
-    // Bottom-to-top...
-    for j in 0..grid_width {
-        let mut running_height: Option<u8> = None;
-        
-        for i in (0..grid_height).rev() {
-            let tree_height = grid[i][j];
-
-            // Was there a previously taller tree (or was that the first tree)?
-            if let Some(rh) = running_height {
-                // Is that tree taller than the previously tallest tree?
-                if tree_height > rh {
-                    running_height = Some(tree_height);
-                    res[i][j] = true;
-                }
-            } else {
-                // This was the first tree, automatically visible and the new tallest...
-                running_height = Some(tree_height);
-                res[i][j] = true;
-            }
-        }
-    }
-
-
-    // Count the visible trees
-    let count = res
-        .into_iter()
-        .map(|row| row
-            .into_iter()
-            .map(|v| if v { 1 } else { 0 })
-            .reduce(|a, b| a + b)
-            .expect("empty row!")
-        )
-        .reduce(|a, b| a + b)
-        .expect("empty columns!");
-
-    println!("found {} visible trees", count);
-    println!("found {} invisible trees", (grid_width * grid_height) - count);
+    // Print the best score...
+    println!("best score = {}", best_score);
 
 }

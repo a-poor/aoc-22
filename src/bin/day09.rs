@@ -108,14 +108,17 @@ fn main() {
         })
         .collect();
 
+        const HEAD: usize = 0;
+        const TAIL: usize = 9;
 
         // Define starting positions and visited set...
-        let mut head = Pos(0, 0);
-        let mut tail = Pos(0, 0);
+        let mut knots: Vec<_> = (0..10)
+            .map(|_| Pos(0, 0))
+            .collect();
         let mut visited: HashSet<Pos> = HashSet::new();
         
         // Add the tail's starting position...
-        visited.insert(tail);
+        visited.insert(Pos(0, 0));
 
         // Iterate through the moves...
         for m in moves {
@@ -125,13 +128,23 @@ fn main() {
             // Iterate through the count, applying each move...
             for _ in 0..n {
                 // Move the head...
-                head = move_head(head, d);
+                knots[HEAD] = move_head(knots[HEAD], d);
 
-                // Move the tail...
-                tail = move_tail(head, tail);
+                // Move the tails...
+                for i in 1..=TAIL {
+                    // Get this knot and the previous knot...
+                    let this = knots[i];
+                    let prev = knots[i-1];
 
-                // Add the tail's position to the visited set...
-                visited.insert(tail);
+                    // Move this knot...
+                    knots[i] = move_tail(
+                        prev,
+                        this, 
+                    );
+                }
+
+                // Add the tail's (aka final knot's) position to the visited set...
+                visited.insert(knots[TAIL]);
             }
         }
 

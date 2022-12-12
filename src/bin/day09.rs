@@ -17,6 +17,15 @@ struct Move (Direction, i32);
 struct Pos(i32, i32);
 
 
+fn direction(n: i32) -> i32 {
+    if n == 0 {
+        0
+    } else {
+        n / n.abs()
+    }
+}
+
+
 fn move_head(p: Pos, d: Direction) -> Pos {
     // Extract the x and y coordinates from the head's position
     let Pos(x, y) = p;
@@ -48,30 +57,20 @@ fn move_tail(head: Pos, tail: Pos) -> Pos {
         return Pos(tx, ty);
     }
 
-    // Otherwise, move it one space in one direction based on
-    // which direction has the greater difference.
-
-    // Is the x-distance greater?
-    if adx > ady && adx > 0 { // Is the x-diff positive? ...then move up one x
-        return Pos(tx+1, ty);
-
-    } else if adx > ady && adx < 0 { // Is the x-diff negative? ...then move down one x
-        return Pos(tx-1, ty);
-
-    }
+    // Calculate the directions to move...
+    // 
+    // The `direction` function will return +1 or -1 depending on the sign of the
+    // value passed in (unless it's 0, in which case `direction` will return 0).
+    // 
+    // If the tail is in the same column or row as the head, the move amount
+    // will be zero for that direction. For diagonal differences, there will
+    // be a move in both directions. 
+    let mx = direction(dx);
+    let my = direction(dy);
     
-    // Otherwise, is the y-distance greater?
-    if ady > adx && ady > 0 { // Is the y-diff positive? ...then move up one y
-        return Pos(tx, ty+1);
+    // Return the position with the moves applied...
+    Pos(tx+mx, ty+my)
 
-    } else if ady > adx && ady < 0 { // Is the y-diff negative? ...then move down one y
-        return Pos(tx, ty-1);
-    }
-
-    // Note: I'm ASSUMING that the above two if-statements are
-    // exhaustive but I'm leaving this panic in, just in case
-    // I'm wrong...
-    unreachable!("weird difference for head={:?} and tail={:?}", head, tail);
 }
 
 

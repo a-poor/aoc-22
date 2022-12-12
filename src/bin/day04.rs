@@ -17,23 +17,6 @@ impl Range {
 
 struct Pair(Range, Range);
 
-impl Pair {
-    fn new(a_start: i32, a_end: i32, b_start: i32, b_end: i32) -> Self {
-        Pair(
-            Range::new(a_start, a_end),
-            Range::new(b_start, b_end),
-        )
-    }
-}
-
-fn a_in_b(r1: Range, r2: Range) -> bool {
-    r1.start >= r2.start && r1.end <= r2.end
-}
-
-fn subsumes(p: Pair) -> bool {
-    let Pair(a, b) = p;
-    a_in_b(a, b) || a_in_b(b, a)
-}
 
 fn overlaps(p: Pair) -> bool {
     let Pair(a, b) = p;
@@ -100,54 +83,3 @@ fn main() {
 
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_a_in_b() {
-        assert!(!a_in_b(
-            Range{start: 2, end: 8}, 
-            Range{start: 3, end: 5},
-        ));
-        assert!(!a_in_b(
-            Range{start: 1, end: 3}, 
-            Range{start: 2, end: 4},
-        ));
-        assert!(a_in_b(
-            Range{start: 3, end: 5}, 
-            Range{start: 1, end: 10},
-        ));
-    }
-    
-    #[test]
-    fn test_overlaps() {
-        assert!(overlaps(Pair::new(
-            1, 5,
-            2, 6,
-        )));
-        assert!(overlaps(Pair::new(
-            1, 10,
-            3, 6,
-        )));
-        assert!(overlaps(Pair::new(
-            3, 5,
-            1, 10,
-        )));
-        assert!(overlaps(Pair::new(
-            3, 9,
-            2, 6,
-        )));
-        
-
-        assert!(!overlaps(Pair::new(
-            1, 4,
-            6, 8,
-        )));
-        assert!(!overlaps(Pair::new(
-            6, 8,
-            1, 4,
-        )));
-    }
-
-}

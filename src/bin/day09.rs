@@ -1,4 +1,8 @@
+use std::fs;
 use std::collections::HashSet;
+
+const INPUT_FILE: &str = "inputs/day-09.txt";
+
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum Direction {
@@ -75,14 +79,8 @@ fn move_tail(head: Pos, tail: Pos) -> Pos {
 
 
 fn main() {
-    let raw = "R 4
-U 4
-L 3
-D 1
-R 4
-D 1
-L 5
-R 2";
+    let raw = fs::read_to_string(INPUT_FILE)
+        .expect("failed to read input file");
 
     // Parse the moves...
     let moves: Vec<Move> = raw

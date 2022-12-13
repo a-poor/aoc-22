@@ -1,92 +1,224 @@
-use std::collections::{HashSet, HashMap};
-
-const ADDX_WAIT: i32 = 2;
-
-#[derive(Debug, Clone, Copy)]
-enum Instruction {
-    NoOp,
-    AddX(i32),
-}
 
 fn main() {
-    let input_file = "inputs/day-10.txt";
-    let raw = std::fs::read_to_string(input_file)
-        .expect("couldn't read input file");
+    // let input_file = "inputs/day-10.txt";
+    // let raw = std::fs::read_to_string(input_file)
+    //     .expect("couldn't read input file");
+
+    let raw = "addx 15
+addx -11
+addx 6
+addx -3
+addx 5
+addx -1
+addx -8
+addx 13
+addx 4
+noop
+addx -1
+addx 5
+addx -1
+addx 5
+addx -1
+addx 5
+addx -1
+addx 5
+addx -1
+addx -35
+addx 1
+addx 24
+addx -19
+addx 1
+addx 16
+addx -11
+noop
+noop
+addx 21
+addx -15
+noop
+noop
+addx -3
+addx 9
+addx 1
+addx -3
+addx 8
+addx 1
+addx 5
+noop
+noop
+noop
+noop
+noop
+addx -36
+noop
+addx 1
+addx 7
+noop
+noop
+noop
+addx 2
+addx 6
+noop
+noop
+noop
+noop
+noop
+addx 1
+noop
+noop
+addx 7
+addx 1
+noop
+addx -13
+addx 13
+addx 7
+noop
+addx 1
+addx -33
+noop
+noop
+noop
+addx 2
+noop
+noop
+noop
+addx 8
+noop
+addx -1
+addx 2
+addx 1
+noop
+addx 17
+addx -9
+addx 1
+addx 1
+addx -3
+addx 11
+noop
+noop
+addx 1
+noop
+addx 1
+noop
+noop
+addx -13
+addx -19
+addx 1
+addx 3
+addx 26
+addx -30
+addx 12
+addx -1
+addx 3
+addx 1
+noop
+noop
+noop
+addx -9
+addx 18
+addx 1
+addx 2
+noop
+noop
+addx 9
+noop
+noop
+noop
+addx -1
+addx 2
+addx -37
+addx 1
+addx 3
+noop
+addx 15
+addx -21
+addx 22
+addx -6
+addx 1
+noop
+addx 2
+addx 1
+noop
+addx -10
+noop
+noop
+addx 20
+addx 1
+addx 2
+addx 2
+addx -6
+addx -11
+noop
+noop
+noop";
 
     // Read in the instructions...
-    let instructions: Vec<Instruction> = raw
+    let instructions: Vec<_> = raw
         .split("\n")
         .map(|line| {
             // Is it a noop line?
             if line == "noop" {
-                return Instruction::NoOp;
+                return None;
             }
 
             // Split the parts and parse the #
             let parts: Vec<_> = line.split(" ").collect();
+            let cmd = parts[0];
+            if cmd != "addx" {
+                panic!("how did I get here?! line = \"{}\"", line);
+            }
+
             let amount: i32 = parts[1]
                 .parse()
                 .expect(format!("couldn't parse number in line \"{}\"", line).as_str())
                 ;
 
             // Return as an instruction...
-            Instruction::AddX(amount)
+            Some(amount)
         })
         .collect();
 
-    // Setup the running state...
-    let mut register: i32 = 1;
-    let mut running_cmds: Box<HashMap<i32, i32>> = Box::new(HashMap::new());
-
-    //
-    let key_rounds: HashSet<usize> = vec![
+    // Define thr rounds to store...
+    let key_rounds: Vec<usize> = vec![
          20,
          60, 
         100, 
         140, 
         180, 
         220,
-    ]
+    ];
+
+    // Calculate the values at each key round...
+    let sub_totals: Vec<_> = key_rounds
         .into_iter()
+        .map(|i| {
+            let register = instructions
+                .clone()
+                .into_iter()
+                .enumerate()
+                .filter(|(j, _)| {
+                    let j = *j as i32;
+                    let i = i as i32;
+                    j - 2 < i - 1
+                }) // Only include values before tick i (j is 0-index, i is 1-index)
+                .filter(|(_, n)| *n != None) // Only include non-None values
+                .map(|(_, n)| n.expect("I though I got rid of all the 'None's"))
+                .reduce(|a, b| a + b)
+                .unwrap_or(0);
+
+            let strength = i * register as usize;
+            println!("{}th cycle: register={}; strength={}", i, register, strength);
+            
+            // Return the signal strength...
+            (i, i * register as usize)
+        })
         .collect();
-    let mut total = 0;
-    
-    // Iterate through the instructions...
-    for i in 0..250 {
-        if let Some(ins) = instructions.get(i) {
-            // A) Start the cycle...
-            let mut n = match ins {
-                Instruction::NoOp => 0,
-                Instruction::AddX(n) => *n,
-            };
-            if let Some(prev) = running_cmds.get(&ADDX_WAIT) {
-                n += prev;
-                unreachable!();
-            }
-            running_cmds.insert(ADDX_WAIT, n);
-        }
 
-
-        // B) During the cycle...
-        let cycle = i + 1;
-        if key_rounds.contains(&cycle) {
-            total += register * cycle as i32;
-        }
-
-        // C) End of the cycle...
-        // > Decrement each of the counts... 
-        let mut next_state = HashMap::new();
-        for (k, v) in running_cmds.into_iter() {
-            next_state.insert(k-1, v);
-        }
-        running_cmds = Box::new(next_state);
-
-        // > If any are <= 0, add them to the register...
-        if let Some(n) = running_cmds.get(&0) {
-            register += *n;
-        }
-    }
-
+    // Sum the total...
+    let total = sub_totals
+        .into_iter()
+        .map(|(_, n)| n)
+        .reduce(|a, b| a + b)
+        .unwrap_or(1);
     println!("total = {}", total);
 
 }

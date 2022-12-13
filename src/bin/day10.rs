@@ -1,4 +1,4 @@
-use std::collections::{VecDeque, HashSet};
+use std::collections::{VecDeque};
 
 const START_DELAY: i32 = 2;
 
@@ -40,23 +40,13 @@ fn main() {
         .collect();
 
     // Setup the state...
-    let save_states: HashSet<_> = vec![
-         20,
-         60, 
-        100, 
-        140, 
-        180, 
-        220,
-    ]
-        .into_iter()
-        .collect();
-    let mut subtotals: Vec<i32> = Vec::new();
-    // let mut total = 0;
-    let mut register = 1;
+    let mut register = 2;
     let mut running_cmd: Option<Cmd> = None;
 
+    let mut res = String::new();
+
     // Start running...
-    for i in 1..=220 {
+    for i in 1..=240 {
         // A) Run a command (unless one is already running)...
         match running_cmd {
             Some(_) => {}, // A command is alreay running. Do nothing.
@@ -68,16 +58,20 @@ fn main() {
                             amount: n,
                         });
                     }
-                } else {
-                    println!("[round={}] No more instructions left to run.", i)
                 }
             },
         }
 
-        // B) Save the state if specified...
-        if save_states.contains(&i) {
-            let signal_strength = i * register;
-            subtotals.push(signal_strength);
+        
+        // // B) Save the state if specified...
+        let j = (i-1) % 40 + 1;
+        if register-1 == j || register == j || register+1 == j {
+            res = format!("{}#", res);
+        } else {
+            res = format!("{}.", res);
+        }
+        if i % 40 == 0 {
+            res = format!("{}\n", res);
         }
 
         // c) Tick any counters + update the register...
@@ -93,12 +87,7 @@ fn main() {
             }
         }
     }
-    
-    // Calculate the total...
-    let total = subtotals
-        .into_iter()
-        .reduce(|a, b| a + b)
-        .unwrap_or(0);
-    println!("total = {}", total);
+
+    println!("{}", res);
 
 }

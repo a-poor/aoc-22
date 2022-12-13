@@ -1,3 +1,12 @@
+use std::collections::{VecDeque, HashSet};
+
+const START_DELAY: i32 = 2;
+
+#[derive(Debug, Clone, Copy)]
+struct Cmd {
+    delay: i32,
+    amount: i32,
+}
 
 fn main() {
     // let input_file = "inputs/day-10.txt";
@@ -152,7 +161,7 @@ noop
 noop";
 
     // Read in the instructions...
-    let instructions: Vec<_> = raw
+    let mut instructions: VecDeque<_> = raw
         .split("\n")
         .map(|line| {
             // Is it a noop line?
@@ -177,48 +186,66 @@ noop";
         })
         .collect();
 
-    // Define thr rounds to store...
-    let key_rounds: Vec<usize> = vec![
+    // Setup the state...
+    let save_states: HashSet<_> = vec![
          20,
          60, 
         100, 
         140, 
         180, 
         220,
-    ];
-
-    // Calculate the values at each key round...
-    let sub_totals: Vec<_> = key_rounds
+    ]
         .into_iter()
-        .map(|i| {
-            let register = instructions
-                .clone()
-                .into_iter()
-                .enumerate()
-                .filter(|(j, _)| {
-                    let j = *j as i32;
-                    let i = i as i32;
-                    j - 2 < i - 1
-                }) // Only include values before tick i (j is 0-index, i is 1-index)
-                .filter(|(_, n)| *n != None) // Only include non-None values
-                .map(|(_, n)| n.expect("I though I got rid of all the 'None's"))
-                .reduce(|a, b| a + b)
-                .unwrap_or(0);
-
-            let strength = i * register as usize;
-            println!("{}th cycle: register={}; strength={}", i, register, strength);
-            
-            // Return the signal strength...
-            (i, i * register as usize)
-        })
         .collect();
+    let mut subtotals: Vec<i32> = Vec::new();
+    // let mut total = 0;
+    let mut register = 1;
+    let mut running_cmd: Option<Cmd> = None;
 
-    // Sum the total...
-    let total = sub_totals
+    // Start running...
+    for i in 1..=220 {
+        // A) Run a command (unless one is already running)...
+        match running_cmd {
+            Some(_) => {}, // A command is alreay running. Do nothing.
+            None => {
+                if let Some(ins) = instructions.pop_front() { // Is a command to run?
+                    if let Some(n) = ins { // Is the command an "addx"? (vs a "noop")
+                        running_cmd = Some(Cmd {
+                            delay: START_DELAY,
+                            amount: n,
+                        });
+                    }
+                } else {
+                    println!("[round={}] No more instructions left to run.", i)
+                }
+            },
+        }
+
+        // B) Save the state if specified...
+        if save_states.contains(&i) {
+            let signal_strength = i * register;
+            subtotals.push(signal_strength);
+        }
+
+        // c) Tick any counters + update the register...
+        if let Some(cmd) = running_cmd {
+            if cmd.delay > 1 {
+                running_cmd = Some(Cmd {
+                    delay: cmd.delay - 1,
+                    amount: cmd.amount,
+                });
+            } else {
+                register += cmd.amount;
+                running_cmd = None;
+            }
+        }
+    }
+    
+    // Calculate the total...
+    let total = subtotals
         .into_iter()
-        .map(|(_, n)| n)
         .reduce(|a, b| a + b)
-        .unwrap_or(1);
+        .unwrap_or(0);
     println!("total = {}", total);
 
 }

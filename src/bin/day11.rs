@@ -8,7 +8,7 @@ const INPUT_FILE: &str = "inputs/day-11.txt";
 
 
 #[allow(dead_code)]
-fn parse_monkey_id(line: &str) -> i64 {
+fn parse_monkey_id(line: &str) -> usize {
     let re = Regex::new(r"Monkey (\d+):")
         .unwrap();
     let cap: &str = re
@@ -17,11 +17,11 @@ fn parse_monkey_id(line: &str) -> i64 {
         .get(1)
         .expect("failed to get capture 1")
         .into();
-    cap.parse::<i64>().expect("failed to parse capture as int")
+    cap.parse::<_>().expect("failed to parse capture as int")
 }
 
 #[allow(dead_code)]
-fn parse_starting_items(line: &str) -> Vec<i64> {
+fn parse_starting_items(line: &str) -> Vec<u128> {
     let re = Regex::new(r"Starting items: ([0-9]+(, [0-9]+)*)")
         .unwrap();
     let cap: &str = re
@@ -34,7 +34,7 @@ fn parse_starting_items(line: &str) -> Vec<i64> {
     let nums: Vec<_> = cap
         .split(", ")
         .map(|s| s
-            .parse::<i64>()
+            .parse::<u128>()
             .expect(
                 format!("failed to parse {} as a number", s)
                     .as_str()
@@ -45,13 +45,13 @@ fn parse_starting_items(line: &str) -> Vec<i64> {
     nums
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 enum Value {
     Old,
-    Num(i64),
+    Num(u128),
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 enum Operation {
     Add(Value),
     Mul(Value),
@@ -76,7 +76,7 @@ fn parse_operation(line: &str) -> Operation {
         "old" => Value::Old,
         _ => {
             let n = num_cap
-                .parse::<i64>()
+                .parse::<u128>()
                 .expect("failed to parse num as int");
             Value::Num(n)
         },
@@ -95,64 +95,83 @@ fn parse_operation(line: &str) -> Operation {
 }
 
 #[allow(dead_code)]
-fn parse_test(line: &str) -> i64 {
+fn parse_test(line: &str) -> u128 {
     let re = Regex::new("Test: divisible by ([0-9]+)").unwrap();
     let cap: &str = re.captures(line)
         .expect("no captures found")
         .get(1)
         .expect("failed to get regex capture")
         .into();
-    cap.parse::<i64>()
+    cap.parse::<u128>()
         .expect("failed to parse capture as int")
 }
 
 #[allow(dead_code)]
-fn parse_test_true(line: &str) -> i64 {
+fn parse_test_true(line: &str) -> usize {
     let re = Regex::new("If true: throw to monkey ([0-9]+)").unwrap();
     let cap: &str = re.captures(line.trim())
         .expect(format!("no captures found for line \"{}\"", line).as_str())
         .get(1)
         .expect("failed to get regex capture")
         .into();
-    cap.parse::<i64>()
+    cap.parse::<_>()
         .expect("failed to parse capture as int")
     }
 
 #[allow(dead_code)]
-fn parse_test_false(line: &str) -> i64 {
+fn parse_test_false(line: &str) -> usize {
     let re = Regex::new("If false: throw to monkey ([0-9]+)").unwrap();
     let cap: &str = re.captures(line)
         .expect("no captures found")
         .get(1)
         .expect("failed to get regex capture")
         .into();
-    cap.parse::<i64>()
+    cap.parse::<_>()
         .expect("failed to parse capture as int")    
+}
+
+fn gcd(a: u128, b: u128) -> u128 {
+    let mut x = a;
+    let mut y = b;
+    while y != 0 {
+        (x, y) = (y, x % y);
+    }
+    x
+}
+
+fn lcm(a: u128, b: u128) -> u128 {
+    (a * b) / gcd(a, b)
+}
+
+fn find_lcm(nums: Vec<u128>) -> Option<u128> {
+    nums
+        .into_iter()
+        .reduce(|a, b| lcm(a, b))
 }
 
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Instruction {
-    id: i64,
-    starting_items: Vec<i64>,
+    id: usize,
+    starting_items: Vec<u128>,
     operation: Operation,
-    test_div: i64,
-    test_true: i64,
-    test_false: i64,
+    test_div: u128,
+    test_true: usize,
+    test_false: usize,
 }
 
 struct Monkey {
-    items: VecDeque<i64>,
+    items: VecDeque<u128>,
     op: Operation,
-    test_div: i64,
+    test_div: u128,
     test_true: usize,
     test_false: usize,
-    count: i64,
+    count: u128,
 }
 
 #[allow(dead_code)]
 impl Monkey {
-    fn new(items: Vec<i64>, op: Operation, td: i64, tt: usize, tf: usize) -> Self {
+    fn new(items: Vec<u128>, op: Operation, td: u128, tt: usize, tf: usize) -> Self {
         Self {
             items: items.into(),
             count: 0,
@@ -163,51 +182,51 @@ impl Monkey {
         }
     }
 
-    fn add(&mut self, i: i64) {
+    fn add(&mut self, i: u128) {
         self.items.push_back(i);
     }
     
-    fn get(&mut self) -> Option<i64> {
+    fn get(&mut self) -> Option<u128> {
         self.items.pop_front()
     }
     
-    fn apply(&mut self, i: i64) -> i64 {
+    fn apply(&mut self, i: u128, lcm: u128) -> u128 {
         self.count += 1;
-        let res = match self.op {
+        let res = match self.op.clone() {
             Operation::Add(v) => {
                 match v {
                     Value::Num(n) => i + n,
-                    Value::Old => i + i,
+                    Value::Old => i.clone() + i.clone(),
                 }
             },
             Operation::Mul(v) => {
                 match v {
                     Value::Num(n) => i * n,
-                    Value::Old => i * i,
+                    Value::Old => i.clone() * i.clone(),
                 }
             },
         };
 
-        res / 3
+        res % lcm
     }
 
-    fn test(&self, i: i64) -> usize {
-        if i % self.test_div == 0 {
+    fn test(&self, i: u128) -> usize {
+        if i % self.test_div.clone() == 0 {
             self.test_true
         } else {
             self.test_false
         }
     }
 
-    fn get_apply_test(&mut self) -> Option<(usize, i64)> {
+    fn get_apply_test(&mut self, lcm: u128) -> Option<(usize, u128)> {
         // Get the next value from the list...
         let i = self.get()?;
 
         // Apply the transformation...
-        let n = self.apply(i);
+        let n = self.apply(i, lcm);
 
         // Deside who to send it to next...
-        let to = self.test(n);
+        let to = self.test(n.clone());
 
         // Return the monkey to send it to 
         // and the value to send...
@@ -221,8 +240,8 @@ impl From<Instruction> for Monkey {
             items: ins.starting_items.into(),
             op: ins.operation,
             test_div: ins.test_div,
-            test_true: ins.test_true as usize,
-            test_false: ins.test_false as usize,
+            test_true: ins.test_true,
+            test_false: ins.test_false,
             count: 0,
         }
     }
@@ -230,43 +249,46 @@ impl From<Instruction> for Monkey {
 
 struct State {
     monkeys: Vec<Monkey>,
+    mlcm: u128,
 }
 
 impl State {
     fn new(monkeys: Vec<Monkey>) -> Self {
+        let divs: Vec<_> = monkeys
+            .iter()
+            .map(|m| m.test_div)
+            .collect();
+        let mlcm = find_lcm(divs)
+            .expect("couldn't find an lcm");
         State {
             monkeys,
+            mlcm,
         }
     }
 
-    fn send_to_monkey(&mut self, mi: usize, n: i64) {
+    fn send_to_monkey(&mut self, mi: usize, n: u128) {
         self.monkeys
             .get_mut(mi)
             .expect("that monkey doesn't exist")
             .add(n);
     }
 
-    fn get_apply_test(&mut self, mi: usize) -> Option<(usize, i64)> {
+    fn get_apply_test(&mut self, mi: usize) -> Option<(usize, u128)> {
         self.monkeys
             .get_mut(mi)?
-            .get_apply_test()
+            .get_apply_test(self.mlcm)
     }
 
     fn tick(&mut self) {
         for i in 0..self.monkeys.len() {
-            // println!("--> Monkey {}", i);
             while let Some((mi, n)) = self.get_apply_test(i) {
-                // println!("----> Passing {} to monkey {}", n, mi);
                 self.send_to_monkey(mi, n);
             }
 
         }
-        for (i, m) in self.monkeys.iter().enumerate() {
-            println!("Monkey {}: {:?}", i, m.items.clone());
-        }
     }
 
-    fn get_counts(self) -> Vec<i64> {
+    fn get_counts(self) -> Vec<u128> {
         self.monkeys
             .iter()
             .map(|m| m.count)
@@ -276,7 +298,6 @@ impl State {
 
 
 fn main() {
-    // let raw = fs::read_to_string("inputs/day-11-example.txt").unwrap();
     let raw = fs::read_to_string(INPUT_FILE).unwrap();
     let monkeys: Vec<Monkey> = raw
         .split("\n\n")
@@ -295,27 +316,15 @@ fn main() {
             }.into()
         })
         .collect();
-    let n_monkeys = monkeys.len();
     
     // Initialize the state... (starting items)
     let mut state = State::new(monkeys);
     
     // Start running the rounds...
-    let n_rounds = 20;
-    let mut counts: Vec<_> = (0..n_monkeys).map(|i| state.monkeys[i].items.len()).collect();
-    for i in 0..n_rounds {
-        println!("> Round {}", i);
+    let n_rounds = 10_000;
+    for _ in 0..n_rounds {
         state.tick();
-
-        for (i, m) in state.monkeys.iter().enumerate() {
-            counts[i] += m.items.len();
-        }
     }
-
-    println!();
-    println!();
-    println!("other counts = {:?}", counts);
-    println!();
 
     let mut counts = state.get_counts();
     println!("counts = {:?}", counts.clone());
@@ -330,75 +339,3 @@ fn main() {
 
 }
 
-
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_parse_monkey_id() {
-        assert_eq!(parse_monkey_id("Monkey 0:"), 0);
-        assert_eq!(parse_monkey_id("Monkey 12:"), 12);
-    }
-
-    #[test]
-    fn test_parse_starting_items() {
-        assert_eq!(
-            parse_starting_items("Starting items: 12"),
-            vec![12],
-        );
-        assert_eq!(
-            parse_starting_items("Starting items: 0"),
-            vec![0],
-        );
-        assert_eq!(
-            parse_starting_items("Starting items: 1, 2, 3"),
-            vec![1, 2, 3],
-        );
-        assert_eq!(
-            parse_starting_items("Starting items: 100, 200"),
-            vec![100, 200],
-        );
-    }
-
-    #[test]
-    fn test_parse_operation() {
-        assert_eq!(
-            parse_operation("Operation: new = old + 1"),
-            Operation::Add(Value::Num(1)),
-        );
-        assert_eq!(
-            parse_operation("  Operation: new = old * 123"),
-            Operation::Mul(Value::Num(123)),
-        );
-        assert_eq!(
-            parse_operation("Operation: new = old + old"),
-            Operation::Add(Value::Old),
-        );
-    }
-
-    #[test]
-    fn test_parse_test() {
-        assert_eq!(parse_test("Test: divisible by 1"), 1);
-        assert_eq!(parse_test("Test: divisible by 0"), 0);
-        assert_eq!(parse_test("Test: divisible by 123"), 123);
-        assert_eq!(parse_test("  Test: divisible by 1  "), 1);
-    }
-
-    #[test]
-    fn test_parse_test_true() {
-        assert_eq!(parse_test_true("If true: throw to monkey 0"), 0);
-        assert_eq!(parse_test_true("If true: throw to monkey 1 "), 1);
-        assert_eq!(parse_test_true(" If true: throw to monkey 5"), 5);
-    }
-
-    #[test]
-    fn test_parse_test_false() {
-        assert_eq!(parse_test_false("If false: throw to monkey 0"), 0);
-        assert_eq!(parse_test_false("If false: throw to monkey 1 "), 1);
-        assert_eq!(parse_test_false(" If false: throw to monkey 5"), 5);
-        assert_eq!(parse_test_false("    If false: throw to monkey 4"), 4);
-    }
-
-}

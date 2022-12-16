@@ -165,14 +165,14 @@ impl Monkey {
 
     fn add(&mut self, i: i64) {
         self.items.push_back(i);
-        self.count += 1;
     }
-
+    
     fn get(&mut self) -> Option<i64> {
         self.items.pop_front()
     }
-
+    
     fn apply(&mut self, i: i64) -> i64 {
+        self.count += 1;
         let res = match self.op {
             Operation::Add(v) => {
                 match v {
@@ -276,8 +276,8 @@ impl State {
 
 
 fn main() {
-    let raw = fs::read_to_string("inputs/day-11-example.txt").unwrap();
-    // let raw = fs::read_to_string(INPUT_FILE).unwrap();
+    // let raw = fs::read_to_string("inputs/day-11-example.txt").unwrap();
+    let raw = fs::read_to_string(INPUT_FILE).unwrap();
     let monkeys: Vec<Monkey> = raw
         .split("\n\n")
         .map(|chunk| {

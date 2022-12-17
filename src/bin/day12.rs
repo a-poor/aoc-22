@@ -48,13 +48,11 @@ struct StartData {
     grid: Vec<i32>,
     width: i32,
     height: i32,
-    start: i32,
     end: i32,
 }
 
 fn parse_input(path: &str) -> StartData {
     let mut grid = Vec::new();
-    let mut start = 0;
     let mut end = 0;
 
     let raw = fs::read_to_string(path)
@@ -70,9 +68,6 @@ fn parse_input(path: &str) -> StartData {
     for (i, line) in lines.into_iter().enumerate() {
         for (j, c) in line.chars().enumerate() {
             let idx = idx_2d_to_1d(i as i32, j as i32, width);
-            if c == 'S' {
-                start = idx;
-            }
             if c == 'E' {
                 end = idx;
             }
@@ -80,7 +75,7 @@ fn parse_input(path: &str) -> StartData {
         }
     }
 
-    StartData { grid, width, height, start, end }
+    StartData { grid, width, height, end }
 }
 
 fn check_move(from_height: i32, to_height: i32) -> bool {
@@ -194,85 +189,102 @@ fn pick_best_next(open_set: &mut HashSet<i32>, f_scores: &HashMap<i32, i32>) -> 
 fn main() {
     // Parse the input data...
     let input = parse_input(INPUT_PATH_REAL);
-    // let input = parse_input(INPUT_PATH_EXAMPLE);
     
-    // Initialize the data structures...
-    let mut open_set: HashSet<i32> = HashSet::new();
-    let mut closed_set: HashSet<i32> = HashSet::new();
-    let mut g_scores: HashMap<i32, i32> = HashMap::new();
-    let mut f_scores: HashMap<i32, i32> = HashMap::new();
-    let mut came_from: HashMap<i32, i32> = HashMap::new();
-    let mut res: Option<Vec<i32>> = None;
+    let starting_points = input.grid
+        .clone()
+        .iter()
+        .enumerate()
+        .map(|(i, e)| (i as i32, *e))
+        .filter(|(_, e)| *e == char_to_height('a'))
+        .map(|(i, _)| i)
+        .collect::<Vec<i32>>();
+    
+    let mut best_path: Option<i32> = None;
+    for start in starting_points {
 
-    // Add the start point to the open list...
-    open_set.insert(input.start);
-    g_scores.insert(input.start, 0);
-    f_scores.insert(input.start, distance(input.start, input.end, input.width));
+    
+        // Initialize the data structures...
+        let mut open_set: HashSet<i32> = HashSet::new();
+        let mut closed_set: HashSet<i32> = HashSet::new();
+        let mut g_scores: HashMap<i32, i32> = HashMap::new();
+        let mut f_scores: HashMap<i32, i32> = HashMap::new();
+        let mut came_from: HashMap<i32, i32> = HashMap::new();
+        let mut res: Option<Vec<i32>> = None;
 
-    // Start the loop...
-    loop {
-        // Get the next path to check...
-        let point = pick_best_next(&mut open_set, &f_scores);
-        
-        // Check if there is a path...
-        if point == None {
-            break;
-        }
-        let (point, _) = point.unwrap();
+        // Add the start point to the open list...
+        open_set.insert(start);
+        g_scores.insert(start, 0);
+        f_scores.insert(start, distance(start, input.end, input.width));
 
-        // Check if the last point is the destination...
-        if point == input.end {
-            res = reconstruct_path(&came_from, input.start, input.end);
-            break;
-        }
-
-        // Add the path to the closed list...
-        closed_set.insert(point);
-
-        // Get the neighbors of the last point...
-        let neighbors: Vec<i32> = get_neighbors(point, input.width, input.height)
-            .into_iter()
-            .filter(|n| {
-                // Get the height of the last point...
-                let from_height = input.grid[point as usize];
-                let to_height = input.grid[*n as usize];
-                check_move(from_height, to_height)
-            })
-            .collect();
-
-        let this_g = g_scores.get(&point).unwrap() + 1;
-
-        // Add the neighbors to the open list...
-        for n in neighbors {
-            // For this neighbor, get the previous g score and the new g score...
-            let pg = g_scores.get(&n); // Previous g score
-            let ng = this_g + 1; // New g scores (All distances are 1)
-
-            // Is the new g score better?
-            if pg == None || ng < *pg.unwrap() {
-                // Update the g score...
-                g_scores.insert(n, ng);
-
-                // Update the f score...
-                f_scores.insert(n, ng + distance(n, input.end, input.width));
-
-                // Update the came from...
-                came_from.insert(n, point);
-                
-                // Add the neighbor to the open list...
-                open_set.insert(n);
+        // Start the loop...
+        loop {
+            // Get the next path to check...
+            let point = pick_best_next(&mut open_set, &f_scores);
+            
+            // Check if there is a path...
+            if point == None {
+                break;
             }
+            let (point, _) = point.unwrap();
+
+            // Check if the last point is the destination...
+            if point == input.end {
+                res = reconstruct_path(&came_from, start, input.end);
+                break;
+            }
+
+            // Add the path to the closed list...
+            closed_set.insert(point);
+
+            // Get the neighbors of the last point...
+            let neighbors: Vec<i32> = get_neighbors(point, input.width, input.height)
+                .into_iter()
+                .filter(|n| {
+                    // Get the height of the last point...
+                    let from_height = input.grid[point as usize];
+                    let to_height = input.grid[*n as usize];
+                    check_move(from_height, to_height)
+                })
+                .collect();
+
+            let this_g = g_scores.get(&point).unwrap() + 1;
+
+            // Add the neighbors to the open list...
+            for n in neighbors {
+                // For this neighbor, get the previous g score and the new g score...
+                let pg = g_scores.get(&n); // Previous g score
+                let ng = this_g + 1; // New g scores (All distances are 1)
+
+                // Is the new g score better?
+                if pg == None || ng < *pg.unwrap() {
+                    // Update the g score...
+                    g_scores.insert(n, ng);
+
+                    // Update the f score...
+                    f_scores.insert(n, ng + distance(n, input.end, input.width));
+
+                    // Update the came from...
+                    came_from.insert(n, point);
+                    
+                    // Add the neighbor to the open list...
+                    open_set.insert(n);
+                }
+            }
+        }
+
+        // Print the result...
+        if let Some(res) = res {
+            let path_len = (res.len() - 1) as i32;
+            if best_path == None || path_len < best_path.unwrap() {
+                best_path = Some(path_len);
+            }
+        } else {
+            println!("No path found for start \"{}\"!", start);
         }
     }
 
     // Print the result...
-    if let Some(res) = res {
-        println!("Path found!");
-        println!("Path length: {}", res.len() - 1);
-        println!("Path: {:?}", res);
-    } else {
-        println!("No path found!");
-    }
+    println!("Best path length: {}", best_path.unwrap());
 }
 
 

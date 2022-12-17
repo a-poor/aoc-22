@@ -1,7 +1,12 @@
 use std::fs;
 use std::collections::{HashSet, HashMap};
 
-const INPUT_PATH: &str = "inputs/day-12.txt";
+#[allow(dead_code)]
+const INPUT_PATH_REAL: &str = "inputs/day-12.txt";
+
+#[allow(dead_code)]
+const INPUT_PATH_EXAMPLE: &str = "inputs/day-12-example.txt";
+
 
 fn char_to_height(c: char) -> i32 {
     match c {
@@ -79,7 +84,8 @@ fn parse_input(path: &str) -> StartData {
 }
 
 fn check_move(from_height: i32, to_height: i32) -> bool {
-    from_height - to_height >= -1
+    // from_height - to_height >= -1
+    from_height >= to_height - 1
 }
 
 fn idx_1d_to_2d(i: i32, w: i32) -> (i32, i32) {
@@ -101,52 +107,6 @@ fn distance(a: i32, b: i32, w: i32) -> i32 {
 
     // Return the manhattan distance...
     dx.abs() + dy.abs()
-}
-
-fn eval_path(path: &Vec<i32>, dest: i32, w: i32) -> Option<i32> {
-    // Check that there is at least one point in the path...
-    if path.len() == 0 {
-        return None;
-    }
-
-    let g = path.len() as i32;
-
-    let last_point = path[path.len() - 1];
-    let h = distance(last_point, dest, w);
-
-    let f = g + h;
-    Some(f)
-}
-
-fn choose_path(open_list: &mut Vec<Vec<i32>>, dest: i32, w: i32) -> Option<Vec<i32>> {
-    // Setup the result data...
-    let mut best_i = None;
-    let mut best_f = None;
-
-    // Iterate through the open list...
-    for (i, path) in open_list.iter().enumerate() {
-        // Calculate the f value for this path...
-        let f = eval_path(path, dest, w);
-
-        // Was an f value found?
-        if let Some(f) = f {
-
-            // Was there a previous best? And is this one better?
-            if best_f == None || f < best_f.unwrap() {
-                best_f = Some(f);
-                best_i = Some(i);
-            }
-        }
-    }
-
-    // If no path was found, return None...
-    if best_i == None || best_f == None {
-        return None;
-    }
-
-    // Otherwise, pull out the best path...
-    let best_path = open_list.remove(best_i.unwrap());
-    Some(best_path)
 }
 
 fn get_neighbors(idx: i32, w: i32, h: i32) -> Vec<i32> {
@@ -178,86 +138,144 @@ fn get_neighbors(idx: i32, w: i32, h: i32) -> Vec<i32> {
     neighbors
 }
 
+fn reconstruct_path(came_from: &HashMap<i32, i32>, start: i32, end: i32) -> Option<Vec<i32>> {
+    let mut current = end;
+    let mut path = Vec::new();
+
+    while current != start {
+        path.push(current);
+        if let Some(next) = came_from.get(&current) {
+            current = *next;
+        } else {
+            return None;
+        }
+    }
+
+    path.push(start);
+    path.reverse();
+    Some(path)
+}
+
+fn pick_best_next(open_set: &mut HashSet<i32>, f_scores: &HashMap<i32, i32>) -> Option<(i32, i32)> {
+    // Setup the result data...
+    let mut best_p: Option<i32> = None;
+    let mut best_f: Option<i32> = None;
+
+    // Iterate through the open list...
+    for point in open_set.iter() {
+        // Get the f score for this point...
+        let f = f_scores.get(point);
+
+        // Was an f score found?
+        if let Some(f) = f {
+            let f = *f;
+            let p = *point;
+
+            // Was there a previous best? And is this one better?
+            if best_f == None || f < best_f.unwrap() {
+                best_f = Some(f);
+                best_p = Some(p);
+            }
+        }
+    }
+
+    // If no path was found, return None...
+    if best_p == None || best_f == None {
+        return None;
+    }
+    let best_p = best_p.unwrap();
+    let best_f = best_f.unwrap();
+
+    // Otherwise, pull out the best path...
+    open_set.remove(&best_p);
+    Some((best_p, best_f))
+}
+
 fn main() {
     // Parse the input data...
-    let input = parse_input(INPUT_PATH);
+    let input = parse_input(INPUT_PATH_REAL);
+    // let input = parse_input(INPUT_PATH_EXAMPLE);
     
     // Initialize the data structures...
-    let mut open_list = Vec::new();
-    let mut closed_list: HashSet<i32> = HashSet::new();
-    // let mut chain: HashMap<i32, i32> = HashMap::new();
+    let mut open_set: HashSet<i32> = HashSet::new();
+    let mut closed_set: HashSet<i32> = HashSet::new();
+    let mut g_scores: HashMap<i32, i32> = HashMap::new();
+    let mut f_scores: HashMap<i32, i32> = HashMap::new();
+    let mut came_from: HashMap<i32, i32> = HashMap::new();
     let mut res: Option<Vec<i32>> = None;
 
     // Add the start point to the open list...
-    open_list.push(vec![input.start]);
+    open_set.insert(input.start);
+    g_scores.insert(input.start, 0);
+    f_scores.insert(input.start, distance(input.start, input.end, input.width));
 
     // Start the loop...
     loop {
         // Get the next path to check...
-        let path = choose_path(&mut open_list, input.end, input.width);
+        let point = pick_best_next(&mut open_set, &f_scores);
         
         // Check if there is a path...
-        if path == None {
+        if point == None {
             break;
         }
-        let path = path.unwrap();
-        // println!("Checking path: {:?}", path.clone().into_iter().map(|p| idx_1d_to_2d(p, input.width)).collect::<Vec<(i32, i32)>>());
-        // println!("Open list: {:?}", open_list.clone().into_iter().map(|p| p.clone().into_iter().map(|p| idx_1d_to_2d(p, input.width)).collect::<Vec<(i32, i32)>>()).collect::<Vec<Vec<(i32, i32)>>>());
-        // println!("Closed list: {:?}", closed_list.clone().into_iter().map(|p| idx_1d_to_2d(p, input.width)).collect::<Vec<(i32, i32)>>());
-
-        // Get the last point in the path...
-        let last_point = path.get(path.len() - 1);
-        if last_point == None {
-            break;
-        }
-        let last_point = *last_point.unwrap();
+        let (point, _) = point.unwrap();
 
         // Check if the last point is the destination...
-        if last_point == input.end {
-            res = Some(path);
+        if point == input.end {
+            res = reconstruct_path(&came_from, input.start, input.end);
             break;
         }
 
         // Add the path to the closed list...
-        closed_list.insert(last_point);
+        closed_set.insert(point);
 
         // Get the neighbors of the last point...
-        let neighbors = get_neighbors(last_point, input.width, input.height)
+        let neighbors: Vec<i32> = get_neighbors(point, input.width, input.height)
             .into_iter()
             .filter(|n| {
-                // Is it already in the closed list?
-                if closed_list.contains(n) { return false }
-
                 // Get the height of the last point...
-                let from_height = input.grid[last_point as usize];
+                let from_height = input.grid[point as usize];
                 let to_height = input.grid[*n as usize];
-                if !check_move(from_height, to_height) { return false }
-                
-                // Otherwise, it's a valid neighbor...
-                true
+                check_move(from_height, to_height)
             })
-            .collect::<Vec<_>>();
+            .collect();
+
+        let this_g = g_scores.get(&point).unwrap() + 1;
 
         // Add the neighbors to the open list...
         for n in neighbors {
-            // println!("Checking neighbor: {:?}", idx_1d_to_2d(n, input.width));
-            let mut new_path = path.clone();
-            new_path.push(n);
-            open_list.push(new_path);
-        }
+            // For this neighbor, get the previous g score and the new g score...
+            let pg = g_scores.get(&n); // Previous g score
+            let ng = this_g + 1; // New g scores (All distances are 1)
 
-        // println!();
+            // Is the new g score better?
+            if pg == None || ng < *pg.unwrap() {
+                // Update the g score...
+                g_scores.insert(n, ng);
+
+                // Update the f score...
+                f_scores.insert(n, ng + distance(n, input.end, input.width));
+
+                // Update the came from...
+                came_from.insert(n, point);
+                
+                // Add the neighbor to the open list...
+                open_set.insert(n);
+            }
+        }
     }
 
     // Print the result...
     if let Some(res) = res {
         println!("Path found!");
-        println!("Path length: {}", res.len());
+        println!("Path length: {}", res.len() - 1);
         println!("Path: {:?}", res);
     } else {
         println!("No path found!");
     }
 }
+
+
 
 #[cfg(test)]
 mod tests {

@@ -7,6 +7,7 @@ const INPUT_PATH_REAL: &str = "inputs/day-13.txt";
 #[allow(dead_code)]
 const INPUT_PATH_EXAMPLE: &str = "inputs/day-13-example.txt";
 
+#[allow(dead_code)]
 fn split_lines(raw: &str) -> Vec<(&str, &str)> {
     raw
         .split("\n\n")
@@ -20,7 +21,7 @@ fn split_lines(raw: &str) -> Vec<(&str, &str)> {
         .collect()
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum PacketData {
     NumberVal(i32),
     ArrayVal(Box<Vec<PacketData>>),
@@ -150,26 +151,37 @@ fn main() {
     // let raw = fs::read_to_string(INPUT_PATH_EXAMPLE).unwrap();
     let raw = fs::read_to_string(INPUT_PATH_REAL).unwrap();
 
-    // Split the data into packet pairs and parse...
-    let packet_pairs = split_lines(&raw)
+    // Split the data into packets and add the divider packets...
+    let mut packets = (raw + "\n[[2]]\n[[6]]")
+        .split("\n")
         .into_iter()
-        .map(|(left, right)| (parse_packet(left), parse_packet(right)))
+        .map(|line| {
+            let line = line.trim();
+            if line == "" { return None }
+            Some(parse_packet(line))
+        })
+        .filter(|p| p.is_some())
+        .map(|p| p.unwrap())
         .collect::<Vec<_>>();
 
-    // Compare each pair...
-    let comp_res = packet_pairs
-        .into_iter()
-        .map(|(left, right)| compare_packets(left, right))
-        .collect::<Vec<_>>();
+    // Sort the packets...
+    packets.sort_by(|left, right| {
+        if compare_packets(left.clone(), right.clone()).unwrap() {
+            std::cmp::Ordering::Less
+        } else {
+            std::cmp::Ordering::Greater
+        }
+    });
 
-    // Sum up the indices of the packets that are in the right order...
-    let total = comp_res
-        .into_iter()
-        .enumerate()
-        .filter(|(_, res)| res.is_some() && res.unwrap())
-        .map(|(i, _)| i as i32 + 1)
-        .reduce(|a, b| a + b);
-
+    // Find the divider packets...
+    let div2 = vec![PacketData::ArrayVal(Box::new(vec![PacketData::NumberVal(2)]))];
+    let div2_pos = packets.iter().position(|p| p == &div2).unwrap() + 1;
+    
+    let div6 = vec![PacketData::ArrayVal(Box::new(vec![PacketData::NumberVal(6)]))];
+    let div6_pos = packets.iter().position(|p| p == &div6).unwrap() + 1;
+    println!("Found dividers at positions {} and {}", div2_pos, div6_pos);
+    
     // Print the result...
+    let total = div2_pos * div6_pos;
     println!("total={:?}", total);
 }

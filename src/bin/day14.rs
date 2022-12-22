@@ -281,7 +281,7 @@ struct GridRange {
 
 fn main() -> Result<(), String> {
     // Load the input data...
-    let example = true;
+    let example = false;
     let raw = load_input(14, example)?;
 
     // Create a new grid...

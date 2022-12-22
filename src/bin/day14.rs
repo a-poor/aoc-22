@@ -189,7 +189,7 @@ impl State {
         let grid_range = self.grid_range()?;
 
         // Draw the rocks...
-        for yi in grid_range.min_y..=grid_range.max_y {
+        for yi in grid_range.min_y..=grid_range.max_y+2 {
             for xi in grid_range.min_x..=grid_range.max_x {
                 let this_point = Point::new(xi, yi);
                 if this_point == self.sand_source {
@@ -238,6 +238,7 @@ impl State {
 
     fn drop_sand_once(&mut self) -> Result<SandPos, String> {
         let grid = self.grid_range()?;
+        let floor = grid.max_y + 2;
 
         let mut resting_sand = Some(self.sand_source);
         loop {
@@ -247,8 +248,13 @@ impl State {
             match next_sand {
                 Some(p) => {
                     // Is the sand off the edge?
-                    if p.y > grid.max_y {
-                        return Ok(SandPos::OffTheEdge);
+                    // if p.y > grid.max_y {
+                    //     return Ok(SandPos::OffTheEdge);
+                    // }
+
+                    // Did it hit the floor?
+                    if p.y == floor {
+                        break;
                     }
 
                     // Set it as the new sand...
@@ -342,7 +348,7 @@ fn main() -> Result<(), String> {
     state.draw_grid()?;
     println!();
 
-    println!("# of resting sand units: {}", state.resting_sand.len());
+    println!("# of resting sand units: {}", state.resting_sand.len() + 1);
 
     // Success!
     Ok(())

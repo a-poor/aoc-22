@@ -97,6 +97,33 @@ impl Point {
             Ok(self.to_y(other.y))
         }
     }
+
+    fn down(&self) -> Point {
+        Point {
+            x: self.x,
+            y: self.y+1,
+        }
+    }
+
+    fn down_left(&self) -> Point {
+        Point {
+            x: self.x-1,
+            y: self.y+1,
+        }
+    }
+
+    fn down_right(&self) -> Point {
+        Point {
+            x: self.x+1,
+            y: self.y+1,
+        }
+    }
+}
+
+enum SandPos {
+    Landed(Point),
+    NoRoom,
+    OffTheEdge,
 }
 
 struct State {
@@ -170,7 +197,7 @@ impl State {
                 } else if self.rocks.contains(&this_point) {
                     print!("#");
                 } else if self.resting_sand.contains(&this_point) {
-                    print!("");
+                    print!("o");
                 } else {
                     print!(".");
                 }
@@ -181,6 +208,67 @@ impl State {
         // Success!
         Ok(())
     }
+
+    fn is_point_blocked(&self, point: Point) -> bool {
+        self.rocks.contains(&point) || self.resting_sand.contains(&point)
+    }
+
+    fn get_next_sand_pos(&self, current: Point) -> Option<Point> {
+        // Try to move down...
+        let next = current.down();
+        if !self.is_point_blocked(next) {
+            return Some(next);
+        }
+
+        // Otherwise, try down and to the left...
+        let next = current.down_left();
+        if !self.is_point_blocked(next) {
+            return Some(next);
+        }
+
+        // Otherwise, try down and to the right...
+        let next = current.down_right();
+        if !self.is_point_blocked(next) {
+            return Some(next);
+        }
+
+        // Otherwise, there's nowhere else to go...
+        None
+    }
+
+    fn drop_sand_once(&mut self) -> Result<SandPos, String> {
+        let grid = self.grid_range()?;
+
+        let mut resting_sand = Some(self.sand_source);
+        loop {
+            let this_sand = resting_sand.unwrap();
+            let next_sand = self.get_next_sand_pos(this_sand);
+            
+            match next_sand {
+                Some(p) => {
+                    // Is the sand off the edge?
+                    if p.y > grid.max_y {
+                        return Ok(SandPos::OffTheEdge);
+                    }
+
+                    // Set it as the new sand...
+                    resting_sand = next_sand; 
+                },
+                None => { break; },
+            }
+        }
+
+        let resting_sand = resting_sand.unwrap();
+        if resting_sand == self.sand_source {
+            return Ok(SandPos::NoRoom);
+        }
+        
+        // Add the resting sand and return...
+        self.resting_sand.insert(resting_sand);    
+        Ok(SandPos::Landed(resting_sand))
+    
+    }
+
 }
 
 #[derive(Debug)]
@@ -199,7 +287,7 @@ fn main() -> Result<(), String> {
     // Create a new grid...
     let mut state = State::new();
 
-    // Iterate through lines...
+    // Add the rocks (by iterating through the lines)...
     for line in raw.split("\n") {
         // Split into points...
         let raw_points = line.split(" -> ");
@@ -230,7 +318,31 @@ fn main() -> Result<(), String> {
     }
 
     // Draw the grid...
+    println!("Starting grid...");
     state.draw_grid()?;
+    println!();
+
+    // Start dropping sand...
+    loop {
+        match state.drop_sand_once()? {
+            SandPos::Landed(_) => {},
+            SandPos::NoRoom => {
+                println!("No room!");
+                break;
+            },
+            SandPos::OffTheEdge => {
+                println!("Off the edge!");
+                break;
+            },
+        }
+    }
+
+    println!("Done.");
+    println!("Final grid...");
+    state.draw_grid()?;
+    println!();
+
+    println!("# of resting sand units: {}", state.resting_sand.len());
 
     // Success!
     Ok(())

@@ -1,6 +1,8 @@
 #[allow(dead_code)]
 use std::collections::HashSet;
 
+const TUNING_FREQ_MULT: i128 = 4_000_000;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct Point {
     x: i32,
@@ -18,20 +20,55 @@ impl Point {
         dx.abs() + dy.abs()
     }
 
-    fn points_in_range(&self, distance: i32) -> HashSet<Point> {
-        let mut points = HashSet::new();
-        
-        // NOTE: This could be a lot cleaner, but I'm a few days behind on AoC-22...
-        for x in self.x - distance..=self.x + distance {
-            for y in self.y - distance..=self.y + distance {
-                let p = Point::new(x, y);
-                if self.dist(&p) <= distance {
-                    points.insert(p);
-                }
-            }
+    fn tuning_freq(&self) -> i128 {
+        let x = self.x as i128;
+        let y = self.y as i128;
+        (x * TUNING_FREQ_MULT) + y
+    }
+
+    fn iter_points(&self, other: &Point) -> PointRange {
+        let min_x = self.x.min(other.x);
+        let max_x = self.x.max(other.x);
+        let min_y = self.y.min(other.y);
+        let max_y = self.y.max(other.y);
+        PointRange {
+            from: Point::new(min_x, min_y),
+            to: Point::new(max_x, max_y),
+            current: Point::new(min_x, min_y),
+        }
+    }
+}
+
+struct PointRange {
+    from: Point,
+    to: Point,
+    current: Point,
+}
+
+impl PointRange {
+    fn size(&self) -> i128 {
+        let dx = self.to.x - self.from.x;
+        let dy = self.to.y - self.from.y;
+        (dx as i128) * (dy as i128)
+    }
+}
+
+impl Iterator for PointRange {
+    type Item = Point;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.current.x > self.to.x {
+            self.current.x = self.from.x;
+            self.current.y += 1;
         }
 
-        points
+        if self.current.y > self.to.y {
+            return None;
+        }
+
+        let ret = self.current;
+        self.current.x += 1;
+        Some(ret)
     }
 }
 
@@ -48,6 +85,50 @@ impl DataPoint {
 
     fn dist_to_beacon(&self) -> i32 {
         self.sensor.dist(&self.closest_beacon)
+    }
+}
+
+struct IterRadius {
+    center: Point,
+    radius: i32,
+    dx: i32,
+    dy: i32,
+    current: Point,
+}
+
+impl IterRadius {
+    fn new(center: Point, radius: i32) -> Self {
+        let current = Point::new(center.x - radius, center.y);
+        Self {
+            center,
+            radius,
+            current,
+            dx: -1,
+            dy: 1,
+        }
+    }
+}
+
+impl Iterator for IterRadius {
+    type Item = Point;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if (self.current.x - self.center.x).abs() > self.radius {
+            self.dx *= -1;
+        }
+        if (self.current.y - self.center.y).abs() > self.radius {
+            self.dy *= -1;
+        }
+
+        self.current.x += self.dx;
+        self.current.y += self.dy;
+
+        let ret = self.current;
+        if ret == Point::new(self.center.x - self.radius, self.center.y) {
+            return None;
+        }
+
+        Some(ret)
     }
 }
 
@@ -143,9 +224,14 @@ impl State {
 
 fn main() -> Result<(), String> {
     let raw = aoc_22::util::load_input(15, false)?;
-    let target_y = 2_000_000;
+    let min = 0;
+    let max = 4_000_000;
     // let raw = aoc_22::util::load_input(15, true)?;
-    // let target_y = 10;
+    // let min =  0;
+    // let max = 20;
+    
+    let search_min = Point::new(min, min);
+    let search_max = Point::new(max, max);
 
     let mut state = State::new();
     for line in raw.split("\n") {
@@ -159,46 +245,44 @@ fn main() -> Result<(), String> {
     let sensors = state.data_points.iter().map(|dp| dp.sensor).collect::<HashSet<_>>();
     let beacons = state.data_points.iter().map(|dp| dp.closest_beacon).collect::<HashSet<_>>();
 
-    // Get the unused spaces
-    let mut unused: HashSet<Point> = HashSet::new();
-    for y in grid_range.y_min..=grid_range.y_max {
-        if y != target_y {
-            continue;
-        }
+    for dp in state.data_points.clone() {
+        // Get the distance to the closest beacon...
+        let dist_to_closest_beacon = dp.dist_to_beacon();
 
-        for x in grid_range.x_min..=grid_range.x_max {
-            // Define the point...
-            let p = Point::new(x, y);
-
-            // Check if the point is a sensor or beacon...
+        // Iterate through the points just outside the radius of the closest beacon...
+        for p in IterRadius::new(dp.sensor, dist_to_closest_beacon + 1) {
+            if p.x < search_min.x || p.x > search_max.x {
+                continue;
+            }
+            if p.y < search_min.y || p.y > search_max.y {
+                continue;
+            }
+            
             if sensors.contains(&p) || beacons.contains(&p) {
                 continue;
             }
+            
+            // Iterate through the OTHER sensors and check if it's within their radius...
+            let mut within_radius = false;
+            for other_dp in state.data_points.clone() {
+                if other_dp.sensor == dp.sensor {
+                    continue;
+                }
 
-            // Check if the point is in range of a sensor...
-            let mut in_range = false;
-            for dp in state.data_points.iter() {
-                let s = dp.sensor;
-                let b = dp.closest_beacon;
-                
-                if s.dist(&p) <= s.dist(&b) {
-                    in_range = true;
+                // Check if the point is within the radius of the other sensor...
+                let dist_to_other_sensor = other_dp.sensor.dist(&p);
+                if dist_to_other_sensor <= other_dp.dist_to_beacon() {
+                    // println!("point {:?} is within the radius of {:?} (dist: {})", p, other_dp.sensor, dist_to_other_sensor);
+                    within_radius = true;
                     break;
                 }
             }
-            if in_range {
-                unused.insert(p);
+            if !within_radius {
+                println!("point {:?} is not within the radius of any other sensor. tuning_freq = {}", p, p.tuning_freq());
+                return Ok(());
             }
         }
     }
-
-    let mut count = 0;
-    for p in unused.iter() {
-        if p.y == target_y {
-            count += 1;
-        }
-    }
-    println!("count: {}", count);
 
     Ok(())
 }

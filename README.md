@@ -20,7 +20,7 @@ My solutions to the [Advent of Code 2022](https://adventofcode.com/) written in 
 - [x] Day 12 ([code](./src/bin/day12.rs) | [input](./inputs/day-12.txt) | [link](https://adventofcode.com/2022/12))
 - [x] Day 13 ([code](./src/bin/day13.rs) | [input](./inputs/day-13.txt) | [link](https://adventofcode.com/2022/13))
 - [x] Day 14 ([code](./src/bin/day14.rs) | [input](./inputs/day-14.txt) | [link](https://adventofcode.com/2022/14))
-- [ ] Day 15 ([code](./src/bin/day15.rs) | [input](./inputs/day-15.txt) | [link](https://adventofcode.com/2022/15))
+- [x] Day 15 ([code](./src/bin/day15.rs) | [input](./inputs/day-15.txt) | [link](https://adventofcode.com/2022/15))
 - [ ] Day 16 ([code](./src/bin/day16.rs) | [input](./inputs/day-16.txt) | [link](https://adventofcode.com/2022/16))
 - [ ] Day 17 ([code](./src/bin/day17.rs) | [input](./inputs/day-17.txt) | [link](https://adventofcode.com/2022/17))
 - [ ] Day 18 ([code](./src/bin/day18.rs) | [input](./inputs/day-18.txt) | [link](https://adventofcode.com/2022/18))

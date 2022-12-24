@@ -9,6 +9,7 @@ struct Point {
     y: i32,
 }
 
+#[allow(dead_code)]
 impl Point {
     fn new(x: i32, y: i32) -> Self {
         Self { x, y }
@@ -45,6 +46,7 @@ struct PointRange {
     current: Point,
 }
 
+#[allow(dead_code)]
 impl PointRange {
     fn size(&self) -> i128 {
         let dx = self.to.x - self.from.x;

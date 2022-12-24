@@ -120,6 +120,7 @@ impl Point {
     }
 }
 
+#[allow(dead_code)]
 enum SandPos {
     Landed(Point),
     NoRoom,

@@ -1,4 +1,3 @@
-
 use std::fs;
 
 pub fn load_input(day: u8, example: bool) -> Result<String, String> {
@@ -16,5 +15,3 @@ pub fn load_input(day: u8, example: bool) -> Result<String, String> {
     }
 }
 
-
-pub const FAVE_NUM: i32 = 2;

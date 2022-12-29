@@ -12,7 +12,6 @@ const START_Y_PAD: usize = 3;
 /// Number of rocks to drop
 const N_ROCKS: usize = 2022;
 
-
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
 enum Move {
@@ -28,6 +27,24 @@ impl Move {
             '>' => Ok(Move::Right),
             _ => Err(format!("invalid char '{}'", c)),
         }
+    }
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, PartialEq)]
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+#[allow(dead_code)]
+impl Point {
+    fn new(x: i32, y: i32) -> Point {
+        Point { x, y }
+    }
+
+    fn move(&self, dx: i32, dy: i32) -> Point {
+        Point::new(self.x + dx, self.y + dy)
     }
 }
 
@@ -85,104 +102,6 @@ impl State {
         })
     }
 
-    fn get_top_rock_height(&self) -> i32 {
-        // TODO - The inner loop may cause an issue w/ pointers?
-        for (i, row) in self.resting_rocks.iter().rev() {
-            for r in row.iter() {
-                if r {
-                    return i
-                }
-            }
-        }
-        panic!("No valid resting rock");
-    }
-
-    fn drop_rock(&mut self) -> Result<(), String> {
-        // Get the rock to be dropped...
-        let rock = self.next_rock;
-
-        // Drop the appropriate rock...
-        match rock {
-            Rock::HLine => self.drop_hline()?,
-            Rock::Cross => self.drop_cross()?,
-            Rock::LShape => self.drop_lshape()?,
-            Rock::VLine => self.drop_vline()?,
-            Rock::Square => self.drop_square()?,
-        }
-        
-        // Move to the next rock...
-        self.next_rock = rock.next();
-    }
-
-    fn drop_hline(&mut self) -> Result<(), String> {
-        // Init the starting position...
-        let width = 4;
-        let mut xpos = START_X_PAD;
-        let mut ypos = START_Y_PAD + self.get_top_rock_height();
-
-        // Start looping...
-        loop {
-            // Get the next move...
-            let rmove = self.moves.pop_front();
-
-            // Attemtp to move L/R...
-            match rmove {
-                Move::Right => {
-                    // - If already at the right edge, do nothing.
-                    // - If path blocked, do nothing...
-                    // - Otherwise, move left
-                    if (
-                        xpos+width < CHAMBER_WIDTH && (
-                            ypos >= self.resting_rocks.len()
-                            || !self.resting_rocks[ypos][xpos+1]
-                        )
-                    ) {
-                        xpos += 1;
-                    }
-                },
-                Move::Left => {
-                    // - If already at the left edge, do nothing.
-                    // - If path blocked, do nothing...
-                    // - Otherwise, move left
-                    if (
-                        xpos > 0 && (
-                            ypos >= self.resting_rocks.len()
-                            || !self.resting_rocks[ypos][xpos-1]
-                        ) 
-                    ) {
-                        xpos -= 1; // Move left!
-                    }
-                },
-            }
-
-            // Attempt to move down one...
-            let mut hits = false;
-            for i in 0..width {
-                let x = xpos + i;
-                if self.resting_rocks[ypos+1][x] {
-                    hits = true;
-                    break;
-                }
-            }
-            if hits {
-                // Add the current resting positoon as resting blocks...
-                if 
-            } else {
-                ypos -= 1;
-            }
-        }
-
-        // It worked!
-        Ok(())
-    }
-
-    fn drop_cross(&mut self) {}
-
-    fn drop_lshape(&mut self) {}
-
-    fn drop_vline(&mut self) {}
-
-    fn drop_square(&mut self) {}
 }
 
 fn main() -> Result<(), String> {

@@ -224,7 +224,8 @@ impl Rock {
 
 #[derive(Debug, Clone)]
 struct State {
-    moves: VecDeque<Move>,
+    moves: Vec<Move>,
+    move_pos: usize,
     next_rock: RockType,
     resting_points: HashSet<Point>,
     min_x: usize,
@@ -234,9 +235,10 @@ struct State {
 
 impl State {
     /// Create a new game state manager.
-    fn new(moves: VecDeque<Move>) -> Self {
+    fn new(moves: Vec<Move>) -> Self {
         Self { 
             moves,
+            move_pos: 0,
             next_rock: RockType::HLine,
             resting_points: HashSet::new(),
             min_x: 0,
@@ -277,22 +279,26 @@ impl State {
         rock
     }
 
-    fn peak_next_move(&self) -> Option<Move> {
-        self.moves
-            .front()
-            .map(|m| m.clone())
-    }
-
     /// Get the next move from the queue.
-    fn get_next_move(&mut self) -> Option<Move> {
-        self.moves.pop_front()
+    fn get_next_move(&mut self) -> Move {
+        // Get the next move...
+        let m = self.moves[self.move_pos];
+
+        // Increment the move position (and wrap)...
+        self.move_pos += 1;
+        if self.move_pos >= self.moves.len() {
+            self.move_pos = 0;
+        }
+
+        // Return the move...
+        m
     }
 
     fn get_max_y(&self) -> i32 {
         self.resting_points.iter()
             .map(|p| p.y)
             .max()
-            .unwrap_or(0)
+            .unwrap_or(-1)
     }
 
     fn get_next_rock_pos(&self) -> Point {
@@ -302,7 +308,7 @@ impl State {
         // Return the next rock position, with padding...
         Point::new(
             START_X_PAD as i32,
-            max_y + START_Y_PAD as i32,
+            max_y + 1 + START_Y_PAD as i32,
         )
     }
 
@@ -315,12 +321,28 @@ impl State {
         Rock::new_by_type(rock_type, pos)
     }
 
-    fn try_move_x(&self, rock: &Rock, m: Option<Move>) -> Option<Rock> {
-        let m = match m {
-            Some(m) => m,
-            None => return None,
-        };
+    fn draw_state(&self, rock: Option<Rock>) {
+        let max_y = self.get_max_y() + 10;
+        for i in (0..max_y).rev() {
+            print!("|");
+            for j in 0..CHAMBER_WIDTH {
+                let p = Point::new(j as i32, i as i32);
 
+                if rock.is_some() && rock.as_ref().unwrap().points.contains(&p) {
+                    print!("@");
+                } else if self.resting_points.contains(&p) {
+                    print!("#");
+                } else {
+                    print!(".");
+                }
+            }
+            println!("| {}", i);
+        }
+        
+        println!("+{}+", "-".repeat(CHAMBER_WIDTH));
+    }
+
+    fn try_move_x(&self, rock: &Rock, m: Move) -> Option<Rock> {
         // Get the new position...
         let move_point = Point::from_move(m);
 
@@ -368,39 +390,45 @@ impl State {
     fn drop_next_rock(&mut self) {
         // Get the next rock to be dropped...
         let mut rock = self.get_next_rock();
-        let mut moves = self.moves.clone();
+
+        // self.draw_state(Some(rock.clone()));
 
         // Iterate until the rock comes to rest...
         loop {
             // Get the next move, if any...
-            let m = moves.pop_front();
+            let m = self.get_next_move();
+            // println!("MOVE={:?}", m);
 
             // Try to move the rock left/right...
             // If it can't be moved l/r, that's fine.
             let next_rock = self.try_move_x(&rock, m);
             if let Some(next_rock) = next_rock {
-                rock = next_rock;
+                rock = next_rock.clone();
             }
 
             // Try to move the rock down...
             let next_rock = self.try_move_down(&rock);
             if let Some(next_rock) = next_rock {
-                rock = next_rock;
+                rock = next_rock.clone();
             } else {
                 // The rock has come to rest!
                 self.add_points_from_rocks(&rock);
                 break;
             }
+
+            // self.draw_state(Some(rock.clone()));
         }
+
+        // self.draw_state(None);
     }
 }
 
 fn main() -> Result<(), String> {
     // Load the input data...
-    let raw = aoc_22::util::load_input(17, true)?;
+    let raw = aoc_22::util::load_input(17, false)?;
 
     // Parse the input data...
-    let moves: VecDeque<Move> = raw
+    let moves: Vec<Move> = raw
         .chars()
         .map(|c| Move::parse(c).expect(format!("'{}' isn't a valid char", c).as_str()))
         .collect();
@@ -414,24 +442,8 @@ fn main() -> Result<(), String> {
     }
 
     // How tall are the resting rocks?
-    let max_y = state.get_max_y();
+    let max_y = state.get_max_y() + 1;
     println!("max_y = {}", max_y);
-
-    let grid: Vec<Vec<bool>> = (0..max_y)
-        .map(|i| (0..CHAMBER_WIDTH).map(|j| {
-            let p = Point::new(j as i32, i as i32);
-            state.resting_points.contains(&p)
-        }).collect())
-        .collect();
-    
-    for row in grid.iter().rev() {
-        print!("|");
-        for col in row.iter() {
-            print!("{}", if *col { '#' } else { '.' });
-        }
-        println!("|");
-    }
-    println!("+{}+", "-".repeat(CHAMBER_WIDTH));
 
     // Success!
     Ok(())

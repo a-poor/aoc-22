@@ -16,7 +16,8 @@ const START_X_PAD: usize = 2;
 const START_Y_PAD: usize = 3;
 
 /// Number of rocks to drop
-const N_ROCKS: usize = 2022;
+// const N_ROCKS: usize = 2022;
+const N_ROCKS: usize = 1_000_000_000_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Move {
@@ -391,13 +392,10 @@ impl State {
         // Get the next rock to be dropped...
         let mut rock = self.get_next_rock();
 
-        // self.draw_state(Some(rock.clone()));
-
         // Iterate until the rock comes to rest...
         loop {
             // Get the next move, if any...
             let m = self.get_next_move();
-            // println!("MOVE={:?}", m);
 
             // Try to move the rock left/right...
             // If it can't be moved l/r, that's fine.
@@ -415,11 +413,46 @@ impl State {
                 self.add_points_from_rocks(&rock);
                 break;
             }
-
-            // self.draw_state(Some(rock.clone()));
         }
 
-        // self.draw_state(None);
+        // Clean up any settled points...
+        self.clean_up_points();
+    }
+
+    fn clean_up_points(&mut self) -> usize {
+        // Get the max y value up to this point...
+        let max_y = self.get_max_y();
+
+        // Iterate over each row, starting from the top...
+        for i in (0..max_y).rev() {
+            // Get the points in this row...
+            let points: Vec<Point> = (0..CHAMBER_WIDTH)
+                .map(|x| Point::new(x as i32, i as i32))
+                .collect();
+
+            // Check if all of the points are settled...
+            let all_settled = points.iter()
+                .all(|p| self.resting_points.contains(p));
+
+            // If they are, remove all of the points from there on...
+            if all_settled {
+                let n = self.resting_points
+                    .iter()
+                    .filter(|p| p.y < i as i32)
+                    .count();
+
+                self.resting_points = self.resting_points
+                    .iter()
+                    .filter(|p| p.y >= i as i32)
+                    .map(|p| p.clone())
+                    .collect();
+                
+                return n;
+            }
+        }
+
+        // Return nothing...
+        0
     }
 }
 
